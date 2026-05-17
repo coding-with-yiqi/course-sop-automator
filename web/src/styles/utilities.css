@@ -1,0 +1,64 @@
+/* Pulled from resources/内容上传.html <style>. Single source of truth for these utility classes. */
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.ai-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(239, 204, 234, 0.3),
+    rgba(111, 212, 243, 0.3),
+    transparent
+  );
+  transform: rotate(30deg);
+  animation: shimmer 3s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) rotate(30deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(30deg);
+  }
+}
+
+.gradient-stripe {
+  background: linear-gradient(to right, #89d385, #efccea);
+  height: 6px;
+  width: 100%;
+}
+
+.matcha-gradient {
+  background: linear-gradient(135deg, #89d385, #6cd1f0);
+}
+
+.matcha-gradient-text {
+  background: linear-gradient(135deg, #256c2b, #00677d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.shiki-host pre.shiki {
+  margin: 0;
+  padding: 16px;
+  background: #1a3217 !important;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+}

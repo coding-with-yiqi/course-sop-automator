@@ -1,0 +1,29 @@
+node_modules/
+dist/
+.env
+.env.local
+
+# Runtime data — uploads, frames, exports, sqlite DB
+data/
+
+# Build / cache
+.turbo/
+.vite/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.gstack/
+
+# Local-only docs and design assets — keep out of public repo
+CLAUDE.md
+LOG.md
+todo.md
+resources/
