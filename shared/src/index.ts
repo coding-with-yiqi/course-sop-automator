@@ -80,6 +80,7 @@ export interface Task {
   errorJson: string | null;
   videoFileName: string;
   subtitleFileName: string | null;
+  slidesFileName: string | null;
   videoDurationSec: number | null;
   createdAt: number;
   updatedAt: number;

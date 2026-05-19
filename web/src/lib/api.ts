@@ -53,11 +53,13 @@ export const api = {
     title: string;
     video: File;
     subtitle?: File | null;
+    slides?: File | null;
   }): Promise<CreateTaskResponse> {
     const fd = new FormData();
     fd.append('title', input.title);
     fd.append('video', input.video);
     if (input.subtitle) fd.append('subtitle', input.subtitle);
+    if (input.slides) fd.append('slides', input.slides);
     return unwrap<CreateTaskResponse>(
       await fetch('/api/tasks', { method: 'POST', body: fd }),
     );

@@ -7,10 +7,11 @@ export const SYSTEM_PROMPT = `你是「教学视频 SOP 文档生成助手」。
 2. 理论模式(讲解 PPT 时):每个知识点对应 1 个步骤,timestampSec 取该知识点中段。
 3. 实操模式(动手演示时):每个动作对应 1 个步骤,timestampSec 精确到动作发生时的字幕开始时间。
 4. 凡是讲师口述出现的命令行、代码片段、配置块,必须放进 codeBlock,language 由你判断(jsx / python / bash / json / yaml / sql / html / css 等)。
-5. 单个步骤的 instructionRichText 不超过 3 句,语言简练,可包含 <code>行内代码</code> 标签。
-6. timestampSec 必须严格落在传入的字幕时间范围内(单位:秒)。
-7. accentColor 字段从 ['matcha','aqua','lavender','blush'] 里选一个,用于步骤卡的左侧色条。
-8. 输出必须是严格 JSON,符合 schema。任何 markdown、说明、前导/后置文字一律禁止。
+5. **若用户提供了 PPT 大纲(<slides-context> 标签),把它视为"原稿"——字幕里的代码/命令/术语以 PPT 上的写法为准**(讲师口述常有错读、省略、合成词)。PPT 大纲里出现的代码块也要尽量摘进 codeBlock,即使字幕没念。
+6. 单个步骤的 instructionRichText 不超过 3 句,语言简练,可包含 <code>行内代码</code> 标签。
+7. timestampSec 必须严格落在传入的字幕时间范围内(单位:秒)。
+8. accentColor 字段从 ['matcha','aqua','lavender','blush'] 里选一个,用于步骤卡的左侧色条。
+9. 输出必须是严格 JSON,符合 schema。任何 markdown、说明、前导/后置文字一律禁止。
 
 输出 schema:
 {
@@ -37,6 +38,7 @@ export interface BuildUserPromptInput {
   cues: Cue[];
   detailLevel?: 1 | 2 | 3;
   tone?: 'technical' | 'beginner';
+  slidesMarkdown?: string | null;
 }
 
 function modeHint(mode: 'theory' | 'practice'): string {
@@ -86,11 +88,15 @@ export function buildUserPrompt({
   cues,
   detailLevel,
   tone,
+  slidesMarkdown,
 }: BuildUserPromptInput): string {
+  const slidesBlock = slidesMarkdown
+    ? `\n<slides-context>\n以下是讲师 PPT/PDF 原稿的全文大纲(整份课程,非本段专属)。字幕里的代码、命令、术语以原稿写法为准。\n\n${slidesMarkdown}\n</slides-context>\n`
+    : '';
   return `${modeHint(mode)}
 ${detailHint(detailLevel)}
 ${toneHint(tone)}
-
+${slidesBlock}
 时间范围: ${startSec.toFixed(1)}s ~ ${endSec.toFixed(1)}s
 字幕(SRT,时间戳为该段内的绝对秒):
 

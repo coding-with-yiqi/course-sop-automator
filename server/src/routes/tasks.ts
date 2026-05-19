@@ -20,6 +20,7 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
     let title = '';
     let videoFileName = '';
     let subtitleFileName: string | null = null;
+    let slidesFileName: string | null = null;
 
     try {
       for await (const part of req.parts()) {
@@ -28,21 +29,18 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
         } else if (part.type === 'file') {
           const isVideo = part.fieldname === 'video';
           const isSubtitle = part.fieldname === 'subtitle';
-          if (!isVideo && !isSubtitle) {
+          const isSlides = part.fieldname === 'slides';
+          if (!isVideo && !isSubtitle && !isSlides) {
             part.file.resume();
             continue;
           }
           const ext = path.extname(part.filename);
-          const target = path.join(
-            paths.uploads(taskId),
-            isVideo ? `video${ext}` : `subtitle${ext}`,
-          );
+          const stem = isVideo ? 'video' : isSubtitle ? 'subtitle' : 'slides';
+          const target = path.join(paths.uploads(taskId), `${stem}${ext}`);
           await streamPipeline(part.file, fs.createWriteStream(target));
-          if (isVideo) {
-            videoFileName = part.filename;
-          } else {
-            subtitleFileName = part.filename;
-          }
+          if (isVideo) videoFileName = part.filename;
+          else if (isSubtitle) subtitleFileName = part.filename;
+          else if (isSlides) slidesFileName = part.filename;
         }
       }
     } catch (err) {
@@ -73,6 +71,7 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
         progress: 0,
         videoFileName,
         subtitleFileName,
+        slidesFileName,
         videoDurationSec: null,
         createdAt: now,
         updatedAt: now,

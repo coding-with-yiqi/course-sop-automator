@@ -17,6 +17,7 @@ import { findDuplicates } from '../ffmpeg/dedupe.ts';
 import { kimi, KIMI_MODEL } from '../llm/kimi.ts';
 import { SYSTEM_PROMPT, buildUserPrompt } from '../llm/prompts.ts';
 import { LlmResponseSchema, type LlmStep } from '../llm/schema.ts';
+import { parseSlides } from '../slides/parse.ts';
 
 interface RunContext {
   taskId: string;
@@ -24,6 +25,7 @@ interface RunContext {
   title: string;
   videoPath: string;
   subtitlePath: string | null;
+  slidesPath: string | null;
 }
 
 interface StageProgress {
@@ -77,24 +79,45 @@ function sanitizeCodeBlock<T extends { content: string }>(block: T): T {
   return { ...block, content: content.trimEnd() };
 }
 
-async function stageIngest(ctx: RunContext): Promise<{ durationSec: number; cues: Cue[] }> {
+async function stageIngest(
+  ctx: RunContext,
+): Promise<{ durationSec: number; cues: Cue[]; slidesMarkdown: string | null }> {
   reportStart(ctx.taskId, 'ingest', '校验视频与字幕');
   const { durationSec } = await probeVideo(ctx.videoPath);
-  reportProgress(ctx.taskId, 'ingest', { progress: 0.5, message: `视频时长 ${Math.round(durationSec)}s` });
+  reportProgress(ctx.taskId, 'ingest', { progress: 0.4, message: `视频时长 ${Math.round(durationSec)}s` });
 
   if (!ctx.subtitlePath) {
     throw new Error('MVP 当前要求传入字幕文件(.srt / .vtt)');
   }
   const cues = await parseSubtitleFile(ctx.subtitlePath);
-  reportProgress(ctx.taskId, 'ingest', { progress: 0.9, message: `字幕 cues: ${cues.length}` });
+  reportProgress(ctx.taskId, 'ingest', { progress: 0.7, message: `字幕 cues: ${cues.length}` });
+
+  let slidesMarkdown: string | null = null;
+  if (ctx.slidesPath) {
+    try {
+      reportProgress(ctx.taskId, 'ingest', { progress: 0.8, message: '解析 PPT/PDF 原稿' });
+      slidesMarkdown = await parseSlides(ctx.slidesPath);
+      const slidesOut = path.join(paths.chunks(ctx.taskId), 'slides.md');
+      ensureDir(path.dirname(slidesOut));
+      await fs.writeFile(slidesOut, slidesMarkdown, 'utf8');
+      reportProgress(ctx.taskId, 'ingest', {
+        progress: 0.95,
+        message: `PPT 解析完成(${slidesMarkdown.length} 字符)`,
+      });
+    } catch (err) {
+      log.warn({ err: (err as Error).message }, 'PPT 解析失败,继续无 PPT 模式');
+      slidesMarkdown = null;
+    }
+  }
 
   db.update(tasks)
     .set({ videoDurationSec: durationSec, updatedAt: Date.now() })
     .where(eq(tasks.id, ctx.taskId))
     .run();
 
-  reportDone(ctx.taskId, 'ingest', `视频 ${Math.round(durationSec)}s · 字幕 ${cues.length} 句`);
-  return { durationSec, cues };
+  const slidesNote = slidesMarkdown ? ` · PPT ${slidesMarkdown.length} 字符` : '';
+  reportDone(ctx.taskId, 'ingest', `视频 ${Math.round(durationSec)}s · 字幕 ${cues.length} 句${slidesNote}`);
+  return { durationSec, cues, slidesMarkdown };
 }
 
 async function stageChunk(
@@ -123,7 +146,7 @@ async function stageChunk(
   return chunks;
 }
 
-async function callKimi(chunk: Chunk): Promise<LlmStep[]> {
+async function callKimi(chunk: Chunk, slidesMarkdown: string | null): Promise<LlmStep[]> {
   const startSec = chunk.startMs / 1000;
   const endSec = chunk.endMs / 1000;
   const user = buildUserPrompt({
@@ -131,6 +154,7 @@ async function callKimi(chunk: Chunk): Promise<LlmStep[]> {
     startSec,
     endSec,
     cues: chunk.cues,
+    slidesMarkdown,
   });
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -164,8 +188,12 @@ async function callKimi(chunk: Chunk): Promise<LlmStep[]> {
   throw new Error('Kimi 返回的 JSON 多次校验失败');
 }
 
-async function stageLlm(ctx: RunContext, chunks: Chunk[]): Promise<LlmStep[]> {
-  reportStart(ctx.taskId, 'llm', `调用 Kimi(${chunks.length} 段)`);
+async function stageLlm(
+  ctx: RunContext,
+  chunks: Chunk[],
+  slidesMarkdown: string | null,
+): Promise<LlmStep[]> {
+  reportStart(ctx.taskId, 'llm', `调用 Kimi(${chunks.length} 段${slidesMarkdown ? ' · 含 PPT 原稿' : ''})`);
   const all: LlmStep[] = [];
   for (let i = 0; i < chunks.length; i += 1) {
     const chunk = chunks[i];
@@ -173,7 +201,7 @@ async function stageLlm(ctx: RunContext, chunks: Chunk[]): Promise<LlmStep[]> {
       progress: i / chunks.length,
       message: `Kimi 处理段 ${i + 1}/${chunks.length}(${chunk.mode})`,
     });
-    const steps = await callKimi(chunk);
+    const steps = await callKimi(chunk, slidesMarkdown);
     all.push(...steps);
   }
   reportDone(ctx.taskId, 'llm', `共抽取 ${all.length} 个步骤`);
@@ -313,6 +341,9 @@ export async function runPipeline(taskId: string, documentId: string): Promise<v
   const subtitlePath = row.subtitleFileName
     ? path.join(paths.uploads(taskId), pickSubtitleFile(row.subtitleFileName))
     : null;
+  const slidesPath = row.slidesFileName
+    ? path.join(paths.uploads(taskId), pickSlidesFile(row.slidesFileName))
+    : null;
 
   const ctx: RunContext = {
     taskId,
@@ -320,12 +351,13 @@ export async function runPipeline(taskId: string, documentId: string): Promise<v
     title: row.title,
     videoPath,
     subtitlePath,
+    slidesPath,
   };
 
   try {
-    const { durationSec, cues } = await stageIngest(ctx);
+    const { durationSec, cues, slidesMarkdown } = await stageIngest(ctx);
     const chunks = await stageChunk(ctx, cues);
-    const llmSteps = await stageLlm(ctx, chunks);
+    const llmSteps = await stageLlm(ctx, chunks, slidesMarkdown);
     const frames = await stageFrames(ctx, llmSteps, durationSec);
     await stageAssemble(ctx, llmSteps, frames);
 
@@ -361,6 +393,11 @@ function pickVideoFile(originalName: string): string {
 function pickSubtitleFile(originalName: string): string {
   const ext = path.extname(originalName) || '.srt';
   return `subtitle${ext}`;
+}
+
+function pickSlidesFile(originalName: string): string {
+  const ext = path.extname(originalName) || '.pptx';
+  return `slides${ext}`;
 }
 
 // Backwards-compat alias matching the stage list in shared/.

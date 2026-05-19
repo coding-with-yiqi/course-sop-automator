@@ -28,6 +28,7 @@ export function runMigrations(): void {
       error_json TEXT,
       video_file_name TEXT NOT NULL,
       subtitle_file_name TEXT,
+      slides_file_name TEXT,
       video_duration_sec REAL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -57,6 +58,20 @@ export function runMigrations(): void {
 
     CREATE INDEX IF NOT EXISTS idx_documents_task ON documents(task_id);
   `);
+
+  // Idempotent additive migrations for existing DBs (CREATE TABLE IF NOT EXISTS
+  // skips column additions on already-existing tables, so we ALTER + swallow
+  // "duplicate column" errors).
+  addColumnIfMissing('tasks', 'slides_file_name', 'TEXT');
+}
+
+function addColumnIfMissing(table: string, column: string, type: string): void {
+  try {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (!/duplicate column name/i.test(msg)) throw err;
+  }
 }
 
 export { sql };

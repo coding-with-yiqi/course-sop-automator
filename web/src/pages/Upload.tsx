@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Captions, CloudUpload, Sparkles, Video, X } from 'lucide-react';
+import { Captions, CloudUpload, FileText, Sparkles, Video, X } from 'lucide-react';
 import clsx from 'clsx';
 import { api, ApiError } from '@/lib/api.ts';
 import { useTaskStream } from '@/lib/sse.ts';
@@ -8,6 +8,7 @@ import { StageList } from '@/components/pipeline/StageList.tsx';
 
 const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv';
 const SUBTITLE_ACCEPT = '.srt,.vtt';
+const SLIDES_ACCEPT = '.pptx,.pdf';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -23,6 +24,7 @@ export function Upload() {
 
   const [video, setVideo] = useState<File | null>(null);
   const [subtitle, setSubtitle] = useState<File | null>(null);
+  const [slides, setSlides] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(initialTaskId);
@@ -60,6 +62,7 @@ export function Upload() {
         title: title.trim() || video.name,
         video,
         subtitle,
+        slides,
       });
       setTaskId(res.taskId);
     } catch (err) {
@@ -80,8 +83,9 @@ export function Upload() {
 
       <VideoDropzone file={video} onFile={setVideo} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <SubtitleSlot file={subtitle} onFile={setSubtitle} />
+        <SlidesSlot file={slides} onFile={setSlides} />
         <TitleInput value={title} onChange={setTitle} placeholder={video?.name ?? '可选,留空将使用视频文件名'} />
       </div>
 
@@ -181,6 +185,35 @@ function SubtitleSlot({ file, onFile }: { file: File | null; onFile: (f: File | 
           <div>
             <p className="text-body-md font-bold text-forest">上传字幕(可选)</p>
             <p className="text-body-sm font-light">支持 .srt / .vtt</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SlidesSlot({ file, onFile }: { file: File | null; onFile: (f: File | null) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div
+      onClick={() => inputRef.current?.click()}
+      className="rounded-card border border-dashed border-border-subtle bg-surface-lowest p-5 cursor-pointer hover:border-matcha-container transition-colors"
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={SLIDES_ACCEPT}
+        className="hidden"
+        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+      />
+      {file ? (
+        <SelectedFile file={file} onRemove={() => onFile(null)} icon={<FileText className="w-5 h-5 text-matcha" />} compact />
+      ) : (
+        <div className="flex items-center gap-3 text-mist">
+          <FileText className="w-5 h-5" />
+          <div>
+            <p className="text-body-md font-bold text-forest">PPT 原稿(可选)</p>
+            <p className="text-body-sm font-light">支持 .pptx / .pdf,帮助 AI 识别代码</p>
           </div>
         </div>
       )}
