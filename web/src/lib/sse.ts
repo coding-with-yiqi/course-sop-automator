@@ -41,6 +41,10 @@ export function useTaskStream(taskId: string | null): TaskStreamState {
       try {
         const data = JSON.parse((event as MessageEvent).data) as StageEvent;
         setStages((prev) => ({ ...prev, [data.stage]: data }));
+        // A new stage event means the pipeline is alive — drop any stale error from a previous run.
+        if (data.status === 'running' || data.status === 'succeeded') {
+          setError(null);
+        }
       } catch (err) {
         console.warn('Failed to parse stage event', err);
       }

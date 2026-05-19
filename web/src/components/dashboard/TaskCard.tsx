@@ -1,13 +1,16 @@
-import { Bot, CalendarDays, CircleAlert, Clock, FileText, MoreVertical, RefreshCw, Trash2 } from 'lucide-react';
+import { Bot, CalendarDays, CircleAlert, Clock, Eye, FileText, RefreshCw, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import type { DashboardTask } from '@/lib/mocks.ts';
 
 interface TaskCardProps {
   task: DashboardTask;
+  busy?: boolean;
+  onRetry?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({ task, busy, onRetry, onDelete }: TaskCardProps) {
   return (
     <div className="relative bg-surface-lowest rounded-xl p-5 border border-border-subtle shadow-card hover:shadow-card-hover transition-shadow overflow-hidden group">
       <div className={clsx('absolute left-0 top-0 bottom-0 w-1', accentColor(task))} aria-hidden="true" />
@@ -15,7 +18,7 @@ export function TaskCard({ task }: TaskCardProps) {
         <TaskMeta task={task} />
         {task.status === 'processing' && <ProcessingProgress task={task} />}
         {task.status === 'failed' && <FailedProgress task={task} />}
-        <TaskActions task={task} />
+        <TaskActions task={task} busy={busy} onRetry={onRetry} onDelete={onDelete} />
       </div>
     </div>
   );
@@ -105,7 +108,9 @@ function FailedProgress({
   return (
     <div className="flex-1 w-full md:max-w-[300px]">
       <div className="flex justify-between text-xs text-error mb-1 font-bold">
-        <span>{task.errorMessage}</span>
+        <span className="truncate" title={task.errorMessage}>
+          {task.errorMessage}
+        </span>
       </div>
       <div className="h-2 w-full bg-error-container rounded-full overflow-hidden">
         <div className="h-full bg-error w-full rounded-full" />
@@ -114,15 +119,41 @@ function FailedProgress({
   );
 }
 
-function TaskActions({ task }: { task: DashboardTask }) {
+function TaskActions({
+  task,
+  busy,
+  onRetry,
+  onDelete,
+}: {
+  task: DashboardTask;
+  busy?: boolean;
+  onRetry?: (id: string) => void;
+  onDelete?: (id: string) => void;
+}) {
+  const deleteBtn = (
+    <IconButton
+      aria-label="删除"
+      tone="danger"
+      disabled={busy}
+      onClick={() => onDelete?.(task.id)}
+    >
+      <Trash2 className="w-4 h-4" />
+    </IconButton>
+  );
+
   switch (task.status) {
     case 'processing':
       return (
         <div className="flex items-center gap-3">
           <Chip variant="processing">处理中</Chip>
-          <IconButton aria-label="删除" tone="danger">
-            <Trash2 className="w-4 h-4" />
-          </IconButton>
+          <Link
+            to={`/upload?taskId=${task.id}`}
+            className="text-matcha border border-matcha hover:bg-surface-highest px-4 py-2 rounded-pill text-sm font-bold transition-colors inline-flex items-center gap-1.5"
+          >
+            <Eye className="w-4 h-4" />
+            查看进度
+          </Link>
+          {deleteBtn}
         </div>
       );
     case 'completed':
@@ -141,24 +172,29 @@ function TaskActions({ task }: { task: DashboardTask }) {
             >
               查看
             </Link>
-            <IconButton aria-label="更多">
-              <MoreVertical className="w-4 h-4" />
-            </IconButton>
+            {deleteBtn}
           </div>
         </div>
       );
     case 'failed':
       return (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/upload?taskId=${task.id}`}
+            className="text-mist border border-border-subtle hover:bg-surface-highest px-3 py-1.5 rounded-pill text-xs font-bold transition-colors inline-flex items-center gap-1"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            详情
+          </Link>
           <button
             type="button"
-            className="text-error hover:bg-error-container px-3 py-1 rounded-pill text-xs font-bold transition-colors flex items-center gap-1 border border-error"
+            disabled={busy}
+            onClick={() => onRetry?.(task.id)}
+            className="text-error hover:bg-error-container px-3 py-1.5 rounded-pill text-xs font-bold transition-colors flex items-center gap-1 border border-error disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className="w-3.5 h-3.5" /> 重试
           </button>
-          <IconButton aria-label="删除" tone="danger">
-            <Trash2 className="w-4 h-4" />
-          </IconButton>
+          {deleteBtn}
         </div>
       );
   }
@@ -188,7 +224,7 @@ function IconButton({
   return (
     <button
       type="button"
-      className={clsx('p-2 rounded-pill transition-colors', tones)}
+      className={clsx('p-2 rounded-pill transition-colors disabled:opacity-50 disabled:cursor-not-allowed', tones)}
       {...rest}
     >
       {children}

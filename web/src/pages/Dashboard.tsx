@@ -75,6 +75,7 @@ export function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -103,6 +104,55 @@ export function Dashboard() {
       clearInterval(interval);
     };
   }, []);
+
+  const markBusy = (id: string, busy: boolean) => {
+    setBusyIds((prev) => {
+      const next = new Set(prev);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleRetry = async (id: string) => {
+    markBusy(id, true);
+    setError(null);
+    // Optimistic flip first so the user sees the failed banner disappear instantly.
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, status: 'queued', currentStage: null, progress: 0, errorJson: null }
+          : t,
+      ),
+    );
+    try {
+      await api.retryTask(id);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : '重试失败';
+      setError(msg);
+    } finally {
+      markBusy(id, false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const target = tasks.find((t) => t.id === id);
+    const label = target?.title ?? '该任务';
+    if (!window.confirm(`确认删除「${label}」?\n关联的视频、字幕、关键帧、生成的文档都会被一并清除,不可恢复。`)) {
+      return;
+    }
+    markBusy(id, true);
+    setError(null);
+    try {
+      await api.deleteTask(id);
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : '删除失败';
+      setError(msg);
+    } finally {
+      markBusy(id, false);
+    }
+  };
 
   const stats = computeStats(tasks);
   const dashboardTasks = tasks.map(toDashboardTask);
@@ -161,7 +211,13 @@ export function Dashboard() {
         ) : (
           <div className="flex flex-col gap-4">
             {dashboardTasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                busy={busyIds.has(task.id)}
+                onRetry={handleRetry}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}

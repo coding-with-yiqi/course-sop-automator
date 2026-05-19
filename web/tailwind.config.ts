@@ -74,11 +74,12 @@ export default {
         pill: '100px',
       },
       maxWidth: {
-        canvas: '1280px',
-        page: '1024px',
+        canvas: '1600px',
+        page: '1600px',
       },
       width: {
         sidebar: '260px',
+        'sidebar-collapsed': '64px',
       },
       boxShadow: {
         card: '0 1px 2px rgba(26, 77, 23, 0.05), 0 1px 3px rgba(26, 77, 23, 0.06)',

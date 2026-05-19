@@ -3,9 +3,9 @@ import { Bell, CircleUserRound, Plus } from 'lucide-react';
 import clsx from 'clsx';
 
 const TABS = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'status', label: 'Automation Status' },
-  { key: 'history', label: 'History' },
+  { key: 'dashboard', label: '工作台' },
+  { key: 'status', label: '自动化状态' },
+  { key: 'history', label: '历史记录' },
 ] as const;
 
 type ActiveTab = (typeof TABS)[number]['key'];
@@ -47,7 +47,7 @@ export function TopAppBar({ activeTab = 'dashboard', showNewTask = true }: TopAp
               className="matcha-gradient text-white px-4 py-2 rounded-pill font-bold text-sm shadow-card hover:opacity-90 transition-opacity flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              New Task
+              新建任务
             </Link>
           )}
           <div className="flex gap-3 text-mist">

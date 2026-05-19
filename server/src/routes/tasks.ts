@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { pipeline as streamPipeline } from 'node:stream/promises';
 import { db } from '../db/client.ts';
-import { tasks, documents } from '../db/schema.ts';
+import { tasks, documents, stageEvents } from '../db/schema.ts';
 import { paths, ensureDir } from '../util/paths.ts';
 import { runPipeline } from '../pipeline/orchestrator.ts';
 import { replay, subscribe, type PersistedStreamEvent } from '../pipeline/eventBus.ts';
@@ -121,6 +121,30 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true, data: { task: row } };
   });
 
+  app.delete<{ Params: { id: string } }>('/api/tasks/:id', async (req, reply) => {
+    const row = db.select().from(tasks).where(eq(tasks.id, req.params.id)).get();
+    if (!row) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: 'task 不存在' } });
+    }
+    db.delete(documents).where(eq(documents.taskId, row.id)).run();
+    db.delete(stageEvents).where(eq(stageEvents.taskId, row.id)).run();
+    db.delete(tasks).where(eq(tasks.id, row.id)).run();
+    const dirs = [
+      paths.uploads(row.id),
+      paths.chunks(row.id),
+      path.join(paths.root, 'frames', row.id),
+      paths.exports(row.documentId),
+    ];
+    for (const dir of dirs) {
+      await fs.promises.rm(dir, { recursive: true, force: true }).catch((err: unknown) => {
+        log.warn({ err, dir }, 'failed to remove dir during task delete');
+      });
+    }
+    return { ok: true, data: { taskId: row.id } };
+  });
+
   app.post<{ Params: { id: string } }>('/api/tasks/:id/retry', async (req, reply) => {
     const row = db.select().from(tasks).where(eq(tasks.id, req.params.id)).get();
     if (!row) {
@@ -132,6 +156,8 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
       .set({ status: 'queued', currentStage: null, progress: 0, errorJson: null, updatedAt: Date.now() })
       .where(eq(tasks.id, row.id))
       .run();
+    // 清掉旧事件流,否则 SSE replay 会把上一轮的 error 再喷一遍
+    db.delete(stageEvents).where(eq(stageEvents.taskId, row.id)).run();
     runPipeline(row.id, row.documentId).catch((err: unknown) =>
       log.error({ err, taskId: row.id }, 'retry pipeline crashed'),
     );

@@ -291,7 +291,7 @@ function PipelineView({
         <div>
           <h2 className="text-headline-lg font-bold text-forest mb-2">
             <Sparkles className="inline-block w-7 h-7 mr-2 text-matcha" />
-            Processing Pipeline
+            处理管线
           </h2>
           <p className="text-body-md text-sage font-light">
             AI 正在按 5 个阶段处理你的素材,完成后会自动跳转到编辑器。

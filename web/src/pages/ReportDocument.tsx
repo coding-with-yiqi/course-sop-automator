@@ -263,7 +263,7 @@ function StatusCard({ lastSavedAt }: { lastSavedAt: number | null }) {
     <section className="bg-surface-bright border border-border-subtle p-4 rounded-card">
       <div className="flex items-center gap-2 mb-1">
         <span className="w-2 h-2 rounded-full bg-matcha animate-pulse" />
-        <span className="text-body-sm text-sage font-bold">Document Ready</span>
+        <span className="text-body-sm text-sage font-bold">文档就绪</span>
       </div>
       <p className="text-body-sm text-mist text-xs font-light">
         {lastSavedAt ? `上次自动保存:${formatRel(lastSavedAt)}` : '尚未保存'}

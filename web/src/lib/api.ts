@@ -65,6 +65,18 @@ export const api = {
     );
   },
 
+  async retryTask(id: string): Promise<CreateTaskResponse> {
+    return unwrap<CreateTaskResponse>(
+      await fetch(`/api/tasks/${id}/retry`, { method: 'POST' }),
+    );
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    await unwrap<{ taskId: string }>(
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' }),
+    );
+  },
+
   async getDocument(id: string): Promise<SOPDocument> {
     const data = await unwrap<{ document: SOPDocument }>(
       await fetch(`/api/documents/${id}`),
