@@ -5,6 +5,7 @@ import type {
   HealthResponse,
   SOPDocument,
   SOPStep,
+  SOPStepAsset,
   SOPSpeaker,
   SOPAiSettings,
 } from '@sop/shared';
@@ -31,6 +32,7 @@ export interface DocumentPatch {
   title?: string;
   speaker?: SOPSpeaker | null;
   aiSettings?: SOPAiSettings;
+  summary?: string;
   steps?: Array<Partial<SOPStep> & { stepNumber: number }>;
 }
 
@@ -162,6 +164,58 @@ export const api = {
         method: 'POST',
       }),
     );
+  },
+
+  async insertStep(
+    docId: string,
+    body: { afterStepNumber: number; title?: string; timestampSec?: number },
+  ): Promise<{ document: SOPDocument; insertedStepNumber: number }> {
+    return unwrap<{ document: SOPDocument; insertedStepNumber: number }>(
+      await fetch(`/api/documents/${docId}/steps/insert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    );
+  },
+
+  async deleteStep(docId: string, stepNumber: number): Promise<SOPDocument> {
+    const data = await unwrap<{ document: SOPDocument }>(
+      await fetch(`/api/documents/${docId}/steps/${stepNumber}`, { method: 'DELETE' }),
+    );
+    return data.document;
+  },
+
+  async uploadStepAsset(
+    docId: string,
+    stepNumber: number,
+    file: File,
+  ): Promise<{ step: SOPStep; asset: SOPStepAsset }> {
+    const fd = new FormData();
+    fd.append('file', file);
+    return unwrap<{ step: SOPStep; asset: SOPStepAsset }>(
+      await fetch(`/api/documents/${docId}/steps/${stepNumber}/assets`, {
+        method: 'POST',
+        body: fd,
+      }),
+    );
+  },
+
+  async deleteStepAsset(docId: string, stepNumber: number, assetName: string): Promise<SOPStep> {
+    const data = await unwrap<{ step: SOPStep }>(
+      await fetch(
+        `/api/documents/${docId}/steps/${stepNumber}/assets/${encodeURIComponent(assetName)}`,
+        { method: 'DELETE' },
+      ),
+    );
+    return data.step;
+  },
+
+  async regenerateSummary(docId: string): Promise<string> {
+    const data = await unwrap<{ summary: string }>(
+      await fetch(`/api/documents/${docId}/summary/regenerate`, { method: 'POST' }),
+    );
+    return data.summary;
   },
 };
 

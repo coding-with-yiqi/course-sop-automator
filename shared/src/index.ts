@@ -22,31 +22,31 @@ export interface StageMeta {
 export const PIPELINE_STAGE_META: Record<StageKey, StageMeta> = {
   ingest: {
     key: 'ingest',
-    label: 'Uploading',
+    label: '上传与校验',
     icon: 'cloud-upload',
     description: '接收视频与字幕,校验时长',
   },
   chunk: {
     key: 'chunk',
-    label: 'Video Chunking & Scene Detection',
+    label: '视频分块与场景识别',
     icon: 'film',
     description: '按字幕语义切分,保证每段 ≤ 25 分钟',
   },
   llm: {
     key: 'llm',
-    label: 'Actionable Step Summarization',
+    label: '操作步骤抽取',
     icon: 'sparkles',
     description: 'LLM 提炼操作步骤,去除口语流水',
   },
   frames: {
     key: 'frames',
-    label: 'Key Frame Extraction',
+    label: '关键帧抓取',
     icon: 'image',
     description: 'FFmpeg 按时间戳抓帧并去重',
   },
   assemble: {
     key: 'assemble',
-    label: 'Assembling Document',
+    label: '组装文档',
     icon: 'file-text',
     description: '组装 HTML 文档',
   },
@@ -119,6 +119,14 @@ export interface SOPScreenshot {
   alt: string;
 }
 
+export interface SOPStepAsset {
+  name: string;
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+  textPreview?: string;
+}
+
 export type AccentColor = 'matcha' | 'aqua' | 'lavender' | 'blush';
 
 export interface SOPStep {
@@ -131,6 +139,7 @@ export interface SOPStep {
   codeBlock: SOPCodeBlock | null;
   accentColor: AccentColor;
   status: 'pending' | 'editing' | 'completed';
+  assets?: SOPStepAsset[];
 }
 
 export interface SOPAiSettings {
@@ -143,8 +152,10 @@ export interface SOPDocument {
   taskId: string;
   title: string;
   speaker: SOPSpeaker | null;
+  summary: string;
   steps: SOPStep[];
   aiSettings: SOPAiSettings;
   lastEditedAt: number;
   createdAt: number;
+  videoUrl?: string | null;
 }

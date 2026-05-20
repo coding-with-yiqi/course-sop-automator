@@ -10,6 +10,7 @@ interface EditState {
   metaDirty: boolean;
   isLoading: boolean;
   isSaving: boolean;
+  isRegeneratingSummary: boolean;
   loadError: string | null;
   saveError: string | null;
   lastSavedAt: number | null;
@@ -20,6 +21,12 @@ interface EditState {
   patchStep(stepNumber: number, patch: Partial<SOPStep>): void;
   replaceStep(stepNumber: number, newStep: SOPStep): void;
   setMeta(patch: { title?: string; speaker?: SOPSpeaker | null; aiSettings?: SOPAiSettings }): void;
+  setSummary(text: string): void;
+  insertStepAfter(afterStepNumber: number): Promise<void>;
+  deleteStep(stepNumber: number): Promise<void>;
+  addAsset(stepNumber: number, file: File): Promise<void>;
+  removeAsset(stepNumber: number, name: string): Promise<void>;
+  regenerateSummary(): Promise<void>;
   scheduleSave(): void;
   saveNow(): Promise<void>;
   reset(): void;
@@ -40,6 +47,7 @@ export const useEditStore = create<EditState>((set, get) => ({
   metaDirty: false,
   isLoading: false,
   isSaving: false,
+  isRegeneratingSummary: false,
   loadError: null,
   saveError: null,
   lastSavedAt: null,
@@ -110,6 +118,107 @@ export const useEditStore = create<EditState>((set, get) => ({
     get().scheduleSave();
   },
 
+  setSummary(text) {
+    const doc = get().document;
+    if (!doc) return;
+    set({
+      document: { ...doc, summary: text },
+      metaDirty: true,
+    });
+    get().scheduleSave();
+  },
+
+  async insertStepAfter(afterStepNumber) {
+    const doc = get().document;
+    if (!doc) return;
+    // 落盘前先把当前编辑中的脏数据 flush,避免插入端点返回的快照覆盖未保存的编辑
+    await get().saveNow();
+    try {
+      const { document: updated, insertedStepNumber } = await api.insertStep(doc.id, {
+        afterStepNumber,
+      });
+      set({
+        document: updated,
+        dirtyStepNumbers: new Set(),
+        metaDirty: false,
+        lastSavedAt: updated.lastEditedAt,
+        selectedStepNumber: insertedStepNumber,
+        saveError: null,
+      });
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : '插入步骤失败';
+      set({ saveError: msg });
+    }
+  },
+
+  async deleteStep(stepNumber) {
+    const doc = get().document;
+    if (!doc) return;
+    await get().saveNow();
+    try {
+      const updated = await api.deleteStep(doc.id, stepNumber);
+      const remaining = updated.steps;
+      const fallback = remaining[0]?.stepNumber ?? null;
+      set({
+        document: updated,
+        dirtyStepNumbers: new Set(),
+        metaDirty: false,
+        lastSavedAt: updated.lastEditedAt,
+        selectedStepNumber:
+          get().selectedStepNumber === stepNumber || get().selectedStepNumber === null
+            ? fallback
+            : get().selectedStepNumber,
+        saveError: null,
+      });
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : '删除步骤失败';
+      set({ saveError: msg });
+    }
+  },
+
+  async addAsset(stepNumber, file) {
+    const doc = get().document;
+    if (!doc) return;
+    try {
+      const { step } = await api.uploadStepAsset(doc.id, stepNumber, file);
+      get().replaceStep(stepNumber, step);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : '素材上传失败';
+      set({ saveError: msg });
+    }
+  },
+
+  async removeAsset(stepNumber, name) {
+    const doc = get().document;
+    if (!doc) return;
+    try {
+      const step = await api.deleteStepAsset(doc.id, stepNumber, name);
+      get().replaceStep(stepNumber, step);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : '素材删除失败';
+      set({ saveError: msg });
+    }
+  },
+
+  async regenerateSummary() {
+    const doc = get().document;
+    if (!doc) return;
+    set({ isRegeneratingSummary: true, saveError: null });
+    try {
+      const summary = await api.regenerateSummary(doc.id);
+      const current = get().document;
+      if (!current) return;
+      set({
+        document: { ...current, summary, lastEditedAt: Date.now() },
+        lastSavedAt: Date.now(),
+        isRegeneratingSummary: false,
+      });
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : '总结生成失败';
+      set({ saveError: msg, isRegeneratingSummary: false });
+    }
+  },
+
   scheduleSave() {
     cancelTimer();
     saveTimer = setTimeout(() => {
@@ -128,6 +237,7 @@ export const useEditStore = create<EditState>((set, get) => ({
       patch.title = document.title;
       patch.speaker = document.speaker;
       patch.aiSettings = document.aiSettings;
+      patch.summary = document.summary;
     }
     if (dirtyStepNumbers.size > 0) {
       patch.steps = document.steps
@@ -140,6 +250,7 @@ export const useEditStore = create<EditState>((set, get) => ({
           codeBlock: s.codeBlock,
           screenshot: s.screenshot,
           accentColor: s.accentColor,
+          timestampSec: s.timestampSec,
         }));
     }
 
@@ -167,6 +278,7 @@ export const useEditStore = create<EditState>((set, get) => ({
       metaDirty: false,
       isLoading: false,
       isSaving: false,
+      isRegeneratingSummary: false,
       loadError: null,
       saveError: null,
       lastSavedAt: null,

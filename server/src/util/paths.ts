@@ -9,6 +9,8 @@ export const paths = {
   uploads: (taskId: string) => path.join(root, 'uploads', taskId),
   chunks: (taskId: string) => path.join(root, 'chunks', taskId),
   frames: (taskId: string, stepN: number) => path.join(root, 'frames', taskId, String(stepN)),
+  assets: (taskId: string, stepNumber: number) =>
+    path.join(root, 'uploads', taskId, 'assets', `step${stepNumber}`),
   exports: (documentId: string) => path.join(root, 'exports', documentId),
 };
 

@@ -35,6 +35,7 @@ export const documents = sqliteTable('documents', {
   speakerJson: text('speaker_json'),
   stepsJson: text('steps_json').notNull(),
   aiSettingsJson: text('ai_settings_json').notNull(),
+  summaryText: text('summary_text'),
   lastEditedAt: integer('last_edited_at').notNull(),
   createdAt: integer('created_at').notNull(),
 });

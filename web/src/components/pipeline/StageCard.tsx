@@ -130,7 +130,7 @@ function messageFor(event: StageEvent, meta: StageMeta): string {
   if (event.message) return event.message;
   if (event.status === 'queued') return meta.description;
   if (event.status === 'running') return meta.description;
-  if (event.status === 'succeeded') return 'Completed.';
+  if (event.status === 'succeeded') return '已完成';
   if (event.status === 'failed') return '失败';
   return meta.description;
 }

@@ -52,6 +52,7 @@ export function runMigrations(): void {
       speaker_json TEXT,
       steps_json TEXT NOT NULL,
       ai_settings_json TEXT NOT NULL,
+      summary_text TEXT,
       last_edited_at INTEGER NOT NULL,
       created_at INTEGER NOT NULL
     );
@@ -63,6 +64,7 @@ export function runMigrations(): void {
   // skips column additions on already-existing tables, so we ALTER + swallow
   // "duplicate column" errors).
   addColumnIfMissing('tasks', 'slides_file_name', 'TEXT');
+  addColumnIfMissing('documents', 'summary_text', 'TEXT');
 }
 
 function addColumnIfMissing(table: string, column: string, type: string): void {

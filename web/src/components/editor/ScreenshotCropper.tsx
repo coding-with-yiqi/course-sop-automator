@@ -107,7 +107,7 @@ export function ScreenshotCropper({
         <header className="px-6 py-4 border-b border-border-subtle flex justify-between items-center">
           <h3 className="text-title-sm font-bold text-forest flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-matcha" />
-            截图编辑 · Step {stepNumber}
+            截图编辑 · 步骤 {stepNumber}
           </h3>
           <button
             type="button"

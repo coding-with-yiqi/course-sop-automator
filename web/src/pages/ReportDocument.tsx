@@ -67,7 +67,7 @@ export function ReportDocument() {
           <div>
             <div className="flex items-center gap-2 mb-0.5">
               <span className="px-2 py-0.5 bg-surface-bright border border-matcha text-matcha rounded text-[10px] font-bold uppercase tracking-wider">
-                Ready
+                就绪
               </span>
               <span className="text-mist text-body-sm font-light">
                 {lastSavedAt ? `生成于 ${new Date(lastSavedAt).toLocaleString('zh-CN')}` : ''}
@@ -114,10 +114,18 @@ function DocumentPreview({
       <header className="mb-10 pb-8 border-b border-border-subtle">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface rounded-pill text-matcha text-[11px] font-bold uppercase tracking-widest mb-4">
           <CheckCircle2 className="w-3.5 h-3.5" />
-          AI-Generated
+          AI 生成
         </span>
         <h1 className="text-headline-lg font-bold text-forest mb-6">{document.title}</h1>
         <SpeakerCard speaker={document.speaker} onSave={onSpeakerSave} />
+        {document.summary && document.summary.trim().length > 0 && (
+          <div className="mt-6 p-5 bg-surface-lowest border border-border-subtle border-l-4 border-l-matcha-container rounded-card">
+            <div className="text-[10px] font-bold text-matcha tracking-widest uppercase mb-2">
+              课程总览
+            </div>
+            <p className="text-body-md text-forest leading-relaxed">{document.summary}</p>
+          </div>
+        )}
       </header>
       <section className="space-y-10">
         {document.steps.map((step) => (
@@ -279,6 +287,9 @@ function useDocumentAsText(): string {
     const lines: string[] = [`# ${document.title}`];
     if (document.speaker?.name) {
       lines.push('', `> ${document.speaker.name} — ${document.speaker.title}`, '');
+    }
+    if (document.summary && document.summary.trim().length > 0) {
+      lines.push('', '## 课程总览', document.summary);
     }
     document.steps.forEach((step) => {
       lines.push('', `## 步骤 ${step.stepNumber}: ${step.title}`);

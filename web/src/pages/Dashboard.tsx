@@ -162,7 +162,7 @@ export function Dashboard() {
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-headline-lg font-bold text-forest mb-2">欢迎回来,准备好自动化了吗?</h2>
-          <p className="text-body-md font-light text-sage">管理你的课程 SOP 任务和处理进度。</p>
+          <p className="text-body-md font-light text-sage">管理你的教学文档任务和处理进度。</p>
         </div>
         <Link
           to="/upload"
@@ -184,7 +184,7 @@ export function Dashboard() {
           icon={CheckCircle2}
           label="已完成"
           value={stats.completed}
-          description="本周成功生成的 SOP"
+          description="本周成功生成的文档"
           accentTop
         />
         <StatsCard
@@ -247,7 +247,7 @@ function EmptyState() {
       </div>
       <h4 className="text-title-sm font-bold text-forest">还没有任务</h4>
       <p className="text-body-sm text-mist font-light max-w-md">
-        上传一个带字幕的课程视频,AI 会自动切片、抽取步骤、抓取关键帧,几分钟后生成图文 SOP。
+        上传一个带字幕的课程视频,AI 会自动切片、抽取步骤、抓取关键帧,几分钟后生成图文教学文档。
       </p>
       <Link
         to="/upload"

@@ -17,6 +17,7 @@ import { findDuplicates } from '../ffmpeg/dedupe.ts';
 import { kimi, KIMI_MODEL } from '../llm/kimi.ts';
 import { SYSTEM_PROMPT, buildUserPrompt } from '../llm/prompts.ts';
 import { LlmResponseSchema, type LlmStep } from '../llm/schema.ts';
+import { generateCourseSummary } from '../llm/summary.ts';
 import { parseSlides } from '../slides/parse.ts';
 
 interface RunContext {
@@ -275,7 +276,7 @@ async function stageAssemble(
   llmSteps: LlmStep[],
   framesByIndex: Map<number, { framePath: string; relativeUrl: string } | null>,
 ): Promise<SOPDocument> {
-  reportStart(ctx.taskId, 'assemble', '组装 SOP 文档');
+  reportStart(ctx.taskId, 'assemble', '组装教学文档');
 
   const sopSteps: SOPStep[] = llmSteps.map((step, idx) => {
     const frame = framesByIndex.get(idx) ?? null;
@@ -292,12 +293,22 @@ async function stageAssemble(
     };
   });
 
+  // 课程级摘要(失败时不阻塞主管线,留空让用户后续在编辑页一键重新生成)
+  let summary = '';
+  try {
+    reportProgress(ctx.taskId, 'assemble', { progress: 0.5, message: '生成课程总结' });
+    summary = await generateCourseSummary({ title: ctx.title, steps: sopSteps });
+  } catch (err) {
+    log.warn({ err: (err as Error).message }, '课程总结生成失败,保持空摘要');
+  }
+
   const now = Date.now();
   const doc: SOPDocument = {
     id: ctx.documentId,
     taskId: ctx.taskId,
     title: ctx.title,
     speaker: null,
+    summary,
     steps: sopSteps,
     aiSettings: { detailLevel: 2, tone: 'technical' },
     lastEditedAt: now,
@@ -312,6 +323,7 @@ async function stageAssemble(
       speakerJson: null,
       stepsJson: JSON.stringify(doc.steps),
       aiSettingsJson: JSON.stringify(doc.aiSettings),
+      summaryText: summary || null,
       lastEditedAt: now,
       createdAt: now,
     })
@@ -321,6 +333,7 @@ async function stageAssemble(
         title: doc.title,
         stepsJson: JSON.stringify(doc.steps),
         aiSettingsJson: JSON.stringify(doc.aiSettings),
+        summaryText: summary || null,
         lastEditedAt: now,
       },
     })

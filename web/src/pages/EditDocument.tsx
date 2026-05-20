@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, EditIcon, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, EditIcon, RotateCw, Save, Sparkles } from 'lucide-react';
 import type { SOPStep } from '@sop/shared';
 import { useEditStore } from '@/stores/editStore.ts';
 import { StepsTimeline } from '@/components/editor/StepsTimeline.tsx';
 import { StepEditor } from '@/components/editor/StepEditor.tsx';
 import { AISettingsPanel } from '@/components/editor/AISettingsPanel.tsx';
 import { ScreenshotCropper } from '@/components/editor/ScreenshotCropper.tsx';
+import { FloatingVideoPlayer } from '@/components/editor/FloatingVideoPlayer.tsx';
 import { api } from '@/lib/api.ts';
 
 export function EditDocument() {
@@ -16,6 +17,7 @@ export function EditDocument() {
   const dirtyCount = useEditStore((s) => s.dirtyStepNumbers.size + (s.metaDirty ? 1 : 0));
   const isLoading = useEditStore((s) => s.isLoading);
   const isSaving = useEditStore((s) => s.isSaving);
+  const isRegeneratingSummary = useEditStore((s) => s.isRegeneratingSummary);
   const loadError = useEditStore((s) => s.loadError);
   const saveError = useEditStore((s) => s.saveError);
   const lastSavedAt = useEditStore((s) => s.lastSavedAt);
@@ -25,10 +27,17 @@ export function EditDocument() {
   const patchStep = useEditStore((s) => s.patchStep);
   const replaceStep = useEditStore((s) => s.replaceStep);
   const setMeta = useEditStore((s) => s.setMeta);
+  const setSummary = useEditStore((s) => s.setSummary);
+  const insertStepAfter = useEditStore((s) => s.insertStepAfter);
+  const deleteStep = useEditStore((s) => s.deleteStep);
+  const addAsset = useEditStore((s) => s.addAsset);
+  const removeAsset = useEditStore((s) => s.removeAsset);
+  const regenerateSummary = useEditStore((s) => s.regenerateSummary);
   const saveNow = useEditStore((s) => s.saveNow);
   const reset = useEditStore((s) => s.reset);
 
   const [screenshotOpen, setScreenshotOpen] = useState(false);
+  const [isInserting, setIsInserting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -72,6 +81,15 @@ export function EditDocument() {
     }
   }
 
+  async function handleInsertAfter(afterStepNumber: number) {
+    setIsInserting(true);
+    try {
+      await insertStepAfter(afterStepNumber);
+    } finally {
+      setIsInserting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <header className="flex items-center justify-between flex-wrap gap-4">
@@ -86,7 +104,7 @@ export function EditDocument() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2 py-0.5 bg-surface-bright border border-matcha text-matcha rounded text-[10px] font-bold uppercase tracking-wider">
-                Draft
+                草稿
               </span>
               <SaveStatus
                 isSaving={isSaving}
@@ -121,10 +139,17 @@ export function EditDocument() {
             className="matcha-gradient text-white px-6 py-2 rounded-pill font-bold text-sm shadow-card hover:shadow-card-hover transition-all inline-flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4" />
-            导出 SOP
+            导出文档
           </button>
         </div>
       </header>
+
+      <SummaryCard
+        value={document.summary ?? ''}
+        onChange={setSummary}
+        onRegenerate={() => void regenerateSummary()}
+        isRegenerating={isRegeneratingSummary}
+      />
 
       <div className="grid grid-cols-12 gap-6 items-start">
         <aside className="col-span-12 lg:col-span-3">
@@ -132,6 +157,8 @@ export function EditDocument() {
             steps={document.steps}
             selectedStepNumber={selectedStepNumber}
             onSelect={selectStep}
+            onInsertAfter={(after) => void handleInsertAfter(after)}
+            isInserting={isInserting}
           />
         </aside>
 
@@ -141,6 +168,7 @@ export function EditDocument() {
               step={selectedStep}
               onPatch={(patch) => patchStep(selectedStep.stepNumber, patch)}
               onOpenScreenshot={() => setScreenshotOpen(true)}
+              onDelete={() => void deleteStep(selectedStep.stepNumber)}
             />
           ) : (
             <div className="text-center text-mist py-20">还没有步骤</div>
@@ -157,6 +185,8 @@ export function EditDocument() {
               onStepRegenerated={(updated: SOPStep) => replaceStep(updated.stepNumber, updated)}
               onOpenScreenshot={() => setScreenshotOpen(true)}
               onUploadDirect={handleDirectUpload}
+              onAddAsset={(file) => addAsset(selectedStep.stepNumber, file)}
+              onRemoveAsset={(name) => removeAsset(selectedStep.stepNumber, name)}
             />
           )}
         </aside>
@@ -172,7 +202,56 @@ export function EditDocument() {
           onSelected={(step) => replaceStep(step.stepNumber, step)}
         />
       )}
+
+      {selectedStep && (
+        <FloatingVideoPlayer
+          videoUrl={document.videoUrl}
+          timestampSec={selectedStep.timestampSec}
+          stepTitle={selectedStep.title}
+          stepNumber={selectedStep.stepNumber}
+        />
+      )}
     </div>
+  );
+}
+
+function SummaryCard({
+  value,
+  onChange,
+  onRegenerate,
+  isRegenerating,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+  onRegenerate: () => void;
+  isRegenerating: boolean;
+}) {
+  const empty = value.trim().length === 0;
+  return (
+    <section className="bg-surface-lowest border border-border-subtle rounded-card p-5 shadow-card">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-title-sm font-bold text-forest flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-aqua" />
+          课程总览
+        </h2>
+        <button
+          type="button"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+          className="px-3 py-1.5 text-xs font-bold text-matcha bg-surface-high border border-matcha-container rounded-input hover:bg-surface-highest transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <RotateCw className={isRegenerating ? 'w-3.5 h-3.5 animate-spin' : 'w-3.5 h-3.5'} />
+          {isRegenerating ? '生成中...' : empty ? '生成总结' : '重新生成'}
+        </button>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={4}
+        placeholder="一段话概括整堂课讲了什么、按什么顺序展开、面向谁。可手动编辑,也可点上方按钮让 AI 重新生成。"
+        className="w-full bg-canvas border border-border-subtle rounded-input p-3 text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-matcha-container resize-y"
+      />
+    </section>
   );
 }
 

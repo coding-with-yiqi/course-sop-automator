@@ -9,6 +9,7 @@ interface StepEditorProps {
   step: SOPStep;
   onPatch: (patch: Partial<SOPStep>) => void;
   onOpenScreenshot: () => void;
+  onDelete?: () => void;
 }
 
 const ACCENT_BAR: Record<SOPStep['accentColor'], string> = {
@@ -18,12 +19,19 @@ const ACCENT_BAR: Record<SOPStep['accentColor'], string> = {
   blush: 'bg-blush',
 };
 
-export function StepEditor({ step, onPatch, onOpenScreenshot }: StepEditorProps) {
+export function StepEditor({ step, onPatch, onOpenScreenshot, onDelete }: StepEditorProps) {
   const [copied, setCopied] = useState(false);
 
   function handleCopyCode() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  function handleDelete() {
+    if (!onDelete) return;
+    if (window.confirm(`确认删除 步骤 ${step.stepNumber}「${step.title}」?后续步骤序号会顺延。`)) {
+      onDelete();
+    }
   }
 
   return (
@@ -33,7 +41,7 @@ export function StepEditor({ step, onPatch, onOpenScreenshot }: StepEditorProps)
       <header className="px-6 py-4 border-b border-border-subtle flex justify-between items-center bg-surface-bright">
         <div className="flex items-center gap-3 min-w-0">
           <span className="px-3 py-1 bg-lavender-container/40 text-lavender rounded-pill text-[12px] font-bold whitespace-nowrap">
-            Step {step.stepNumber}
+            步骤 {step.stepNumber}
           </span>
           <input
             value={step.title}
@@ -51,9 +59,10 @@ export function StepEditor({ step, onPatch, onOpenScreenshot }: StepEditorProps)
           </button>
           <button
             type="button"
-            className="p-1.5 text-mist hover:text-error transition-colors"
+            onClick={handleDelete}
+            disabled={!onDelete}
+            className="p-1.5 text-mist hover:text-error transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title="删除步骤"
-            disabled
           >
             <Trash2 className="w-4 h-4" />
           </button>

@@ -93,6 +93,23 @@ const TEMPLATE_SOURCE = `<!doctype html>
   .speaker .name { font-size: 16px; font-weight: 700; color: var(--forest); }
   .speaker .title { font-size: 13px; color: var(--mist); margin-top: 2px; }
   .doc-header { padding-bottom: 32px; margin-bottom: 40px; border-bottom: 1px solid var(--border); }
+  .summary {
+    margin-top: 24px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--matcha-container);
+    border-radius: 12px;
+  }
+  .summary-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--matcha);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .summary p { margin: 0; color: var(--forest); font-size: 14.5px; line-height: 1.85; }
 
   .step {
     position: relative;
@@ -179,7 +196,7 @@ const TEMPLATE_SOURCE = `<!doctype html>
 <div class="stripe"></div>
 <main class="container">
   <header class="doc-header">
-    <div class="badge">AI Generated · Matcha SOP</div>
+    <div class="badge">AI 生成 · 教学视频转学习文档</div>
     <h1 class="title">{{title}}</h1>
     {{#if speaker}}
     <div class="speaker">
@@ -188,6 +205,12 @@ const TEMPLATE_SOURCE = `<!doctype html>
         <div class="name">{{speaker.name}}</div>
         <div class="title">{{speaker.title}}</div>
       </div>
+    </div>
+    {{/if}}
+    {{#if summary}}
+    <div class="summary">
+      <div class="summary-label">课程总览</div>
+      <p>{{summary}}</p>
     </div>
     {{/if}}
   </header>
@@ -214,7 +237,7 @@ const TEMPLATE_SOURCE = `<!doctype html>
   </section>
 
   <footer>
-    © {{year}} Matcha SOP — Generated locally from your course video.
+    © {{year}} 教学视频转学习文档 · 本地生成
   </footer>
 </main>
 </body>
@@ -266,6 +289,7 @@ export async function renderDocumentHtml(doc: SOPDocument): Promise<RenderResult
 
   const html = template({
     title: doc.title,
+    summary: doc.summary,
     speaker,
     steps,
     year: new Date().getFullYear(),

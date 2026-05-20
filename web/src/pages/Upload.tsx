@@ -77,7 +77,7 @@ export function Upload() {
       <header>
         <h2 className="text-headline-lg font-bold text-forest mb-2">上传课程素材</h2>
         <p className="text-body-md text-sage font-light">
-          上传视频与字幕,AI 会自动切片、抽取步骤、抓取关键帧并生成图文 SOP。
+          上传视频与字幕,AI 会自动切片、抽取步骤、抓取关键帧并生成图文教学文档。
         </p>
       </header>
 
