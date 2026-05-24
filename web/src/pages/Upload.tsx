@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Captions, CloudUpload, FileText, Sparkles, Video, X } from 'lucide-react';
+import { Captions, CloudUpload, FileText, Layers, Sparkles, Video, X } from 'lucide-react';
 import clsx from 'clsx';
+import { GRANULARITY_OPTIONS, type Granularity } from '@sop/shared';
 import { api, ApiError } from '@/lib/api.ts';
 import { useTaskStream } from '@/lib/sse.ts';
 import { StageList } from '@/components/pipeline/StageList.tsx';
@@ -26,6 +27,7 @@ export function Upload() {
   const [subtitle, setSubtitle] = useState<File | null>(null);
   const [slides, setSlides] = useState<File | null>(null);
   const [title, setTitle] = useState('');
+  const [granularity, setGranularity] = useState<Granularity>('normal');
   const [submitting, setSubmitting] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(initialTaskId);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export function Upload() {
         video,
         subtitle,
         slides,
+        granularity,
       });
       setTaskId(res.taskId);
     } catch (err) {
@@ -88,6 +91,8 @@ export function Upload() {
         <SlidesSlot file={slides} onFile={setSlides} />
         <TitleInput value={title} onChange={setTitle} placeholder={video?.name ?? '可选,留空将使用视频文件名'} />
       </div>
+
+      <GranularitySelector value={granularity} onChange={setGranularity} />
 
       {submitError && (
         <div className="bg-error-container text-on-error-container px-4 py-3 rounded-card text-sm">
@@ -232,6 +237,63 @@ function TitleInput({ value, onChange, placeholder }: { value: string; onChange:
         placeholder={placeholder}
         className="w-full bg-canvas px-3 py-2 rounded-input border border-border-subtle focus:outline-none focus:ring-2 focus:ring-matcha-container text-body-sm"
       />
+    </div>
+  );
+}
+
+function GranularitySelector({
+  value,
+  onChange,
+}: {
+  value: Granularity;
+  onChange: (g: Granularity) => void;
+}) {
+  return (
+    <div className="rounded-card border border-border-subtle bg-surface-lowest p-5">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 rounded-full bg-matcha-container/30 flex items-center justify-center shrink-0">
+          <Layers className="w-5 h-5 text-matcha" />
+        </div>
+        <div>
+          <h3 className="text-body-md font-bold text-forest">步骤颗粒度</h3>
+          <p className="text-body-sm text-mist font-light">
+            决定 AI 把每段视频拆成多少步骤;生成后还能在编辑页对单步再调详细程度
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {GRANULARITY_OPTIONS.map((opt) => {
+          const active = opt.value === value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className={clsx(
+                'text-left p-4 rounded-input border transition-all',
+                active
+                  ? 'border-matcha bg-matcha-container/20 shadow-card'
+                  : 'border-border-subtle bg-canvas hover:border-matcha-container hover:bg-matcha-container/10',
+              )}
+            >
+              <div
+                className={clsx(
+                  'text-body-md font-bold mb-1',
+                  active ? 'text-matcha' : 'text-forest',
+                )}
+              >
+                {opt.label}
+                {opt.value === 'normal' && (
+                  <span className="ml-1.5 text-[10px] font-light text-mist">(默认)</span>
+                )}
+              </div>
+              <div className="text-body-sm text-mist font-light leading-relaxed">
+                {opt.description}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

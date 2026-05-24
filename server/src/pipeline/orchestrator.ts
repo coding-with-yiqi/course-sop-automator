@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { nanoid } from 'nanoid';
 import { PIPELINE_STAGES } from '@sop/shared';
-import type { SOPDocument, SOPStep, StageKey } from '@sop/shared';
+import type { Granularity, SOPDocument, SOPStep, StageKey } from '@sop/shared';
 import { db } from '../db/client.ts';
 import { tasks, documents } from '../db/schema.ts';
 import { paths, ensureDir } from '../util/paths.ts';
@@ -27,6 +27,7 @@ interface RunContext {
   videoPath: string;
   subtitlePath: string | null;
   slidesPath: string | null;
+  granularity: Granularity;
 }
 
 interface StageProgress {
@@ -147,7 +148,11 @@ async function stageChunk(
   return chunks;
 }
 
-async function callKimi(chunk: Chunk, slidesMarkdown: string | null): Promise<LlmStep[]> {
+async function callKimi(
+  chunk: Chunk,
+  slidesMarkdown: string | null,
+  granularity: Granularity,
+): Promise<LlmStep[]> {
   const startSec = chunk.startMs / 1000;
   const endSec = chunk.endMs / 1000;
   const user = buildUserPrompt({
@@ -156,6 +161,7 @@ async function callKimi(chunk: Chunk, slidesMarkdown: string | null): Promise<Ll
     endSec,
     cues: chunk.cues,
     slidesMarkdown,
+    granularity,
   });
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -194,7 +200,13 @@ async function stageLlm(
   chunks: Chunk[],
   slidesMarkdown: string | null,
 ): Promise<LlmStep[]> {
-  reportStart(ctx.taskId, 'llm', `调用 Kimi(${chunks.length} 段${slidesMarkdown ? ' · 含 PPT 原稿' : ''})`);
+  const granularityLabel =
+    ctx.granularity === 'coarse' ? '粗放' : ctx.granularity === 'fine' ? '精细' : '平衡';
+  reportStart(
+    ctx.taskId,
+    'llm',
+    `调用 Kimi(${chunks.length} 段 · 颗粒度 ${granularityLabel}${slidesMarkdown ? ' · 含 PPT 原稿' : ''})`,
+  );
   const all: LlmStep[] = [];
   for (let i = 0; i < chunks.length; i += 1) {
     const chunk = chunks[i];
@@ -202,7 +214,7 @@ async function stageLlm(
       progress: i / chunks.length,
       message: `Kimi 处理段 ${i + 1}/${chunks.length}(${chunk.mode})`,
     });
-    const steps = await callKimi(chunk, slidesMarkdown);
+    const steps = await callKimi(chunk, slidesMarkdown, ctx.granularity);
     all.push(...steps);
   }
   reportDone(ctx.taskId, 'llm', `共抽取 ${all.length} 个步骤`);
@@ -358,6 +370,9 @@ export async function runPipeline(taskId: string, documentId: string): Promise<v
     ? path.join(paths.uploads(taskId), pickSlidesFile(row.slidesFileName))
     : null;
 
+  const granularity: Granularity =
+    row.granularity === 'coarse' || row.granularity === 'fine' ? row.granularity : 'normal';
+
   const ctx: RunContext = {
     taskId,
     documentId,
@@ -365,6 +380,7 @@ export async function runPipeline(taskId: string, documentId: string): Promise<v
     videoPath,
     subtitlePath,
     slidesPath,
+    granularity,
   };
 
   try {

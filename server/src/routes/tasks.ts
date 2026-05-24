@@ -10,6 +10,7 @@ import { paths, ensureDir } from '../util/paths.ts';
 import { runPipeline } from '../pipeline/orchestrator.ts';
 import { replay, subscribe, type PersistedStreamEvent } from '../pipeline/eventBus.ts';
 import { log } from '../util/log.ts';
+import type { Granularity } from '@sop/shared';
 
 export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/tasks', async (req, reply) => {
@@ -21,11 +22,15 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
     let videoFileName = '';
     let subtitleFileName: string | null = null;
     let slidesFileName: string | null = null;
+    let granularity: Granularity = 'normal';
 
     try {
       for await (const part of req.parts()) {
         if (part.type === 'field' && part.fieldname === 'title') {
           title = String(part.value).trim();
+        } else if (part.type === 'field' && part.fieldname === 'granularity') {
+          const v = String(part.value);
+          if (v === 'coarse' || v === 'normal' || v === 'fine') granularity = v;
         } else if (part.type === 'file') {
           const isVideo = part.fieldname === 'video';
           const isSubtitle = part.fieldname === 'subtitle';
@@ -73,6 +78,7 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
         subtitleFileName,
         slidesFileName,
         videoDurationSec: null,
+        granularity,
         createdAt: now,
         updatedAt: now,
       })

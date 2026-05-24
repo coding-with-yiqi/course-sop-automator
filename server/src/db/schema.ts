@@ -12,6 +12,7 @@ export const tasks = sqliteTable('tasks', {
   subtitleFileName: text('subtitle_file_name'),
   slidesFileName: text('slides_file_name'),
   videoDurationSec: real('video_duration_sec'),
+  granularity: text('granularity'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });

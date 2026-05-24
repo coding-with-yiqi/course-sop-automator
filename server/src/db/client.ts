@@ -30,6 +30,7 @@ export function runMigrations(): void {
       subtitle_file_name TEXT,
       slides_file_name TEXT,
       video_duration_sec REAL,
+      granularity TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -64,6 +65,7 @@ export function runMigrations(): void {
   // skips column additions on already-existing tables, so we ALTER + swallow
   // "duplicate column" errors).
   addColumnIfMissing('tasks', 'slides_file_name', 'TEXT');
+  addColumnIfMissing('tasks', 'granularity', 'TEXT');
   addColumnIfMissing('documents', 'summary_text', 'TEXT');
 }
 

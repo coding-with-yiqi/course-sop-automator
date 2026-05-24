@@ -1,6 +1,7 @@
 import type {
   ApiEnvelope,
   CreateTaskResponse,
+  Granularity,
   Task,
   HealthResponse,
   SOPDocument,
@@ -56,9 +57,11 @@ export const api = {
     video: File;
     subtitle?: File | null;
     slides?: File | null;
+    granularity?: Granularity;
   }): Promise<CreateTaskResponse> {
     const fd = new FormData();
     fd.append('title', input.title);
+    if (input.granularity) fd.append('granularity', input.granularity);
     fd.append('video', input.video);
     if (input.subtitle) fd.append('subtitle', input.subtitle);
     if (input.slides) fd.append('slides', input.slides);

@@ -1,4 +1,5 @@
 import type { Cue } from '../subtitles/parse.ts';
+import type { Granularity } from '@sop/shared';
 
 export const SYSTEM_PROMPT = `你是「教学视频 SOP 文档生成助手」。你的工作是把课程字幕重组为结构化、可复制、可执行的操作说明。
 
@@ -39,12 +40,25 @@ export interface BuildUserPromptInput {
   detailLevel?: 1 | 2 | 3;
   tone?: 'technical' | 'beginner';
   slidesMarkdown?: string | null;
+  granularity?: Granularity;
 }
 
 function modeHint(mode: 'theory' | 'practice'): string {
   return mode === 'theory'
-    ? '【理论模式】这一段是讲师讲解静态内容(PPT、概念、定义),输出步骤数应较少(2-5 个),每个步骤聚焦一个核心知识点。'
-    : '【实操模式】这一段是讲师动手演示,输出步骤要细(5-15 个),每个动作单独一步,代码命令必须独立成 codeBlock。';
+    ? '【理论模式】这一段是讲师讲解静态内容(PPT、概念、定义),每个步骤聚焦一个独立知识点。'
+    : '【实操模式】这一段是讲师动手演示,每个动作单独一步,代码命令必须独立成 codeBlock。';
+}
+
+function granularityHint(mode: 'theory' | 'practice', g?: Granularity): string {
+  const matrix = {
+    coarse: { theory: '2-3', practice: '3-6', policy: '把相邻小动作合并成一步,只保留核心节点;宁可少也别凑数。' },
+    normal: { theory: '2-5', practice: '5-15', policy: '默认水位:理论每个知识点 1 步、实操每个动作 1 步。' },
+    fine: { theory: '4-10', practice: '10-30', policy: '把每个独立动作、命令、配置、判断都拆成单独一步,不要合并相邻动作。即使讲师一句话说了两件事,也拆成两步。' },
+  } as const;
+  const level = g ?? 'normal';
+  const cfg = matrix[level];
+  const label = level === 'coarse' ? '粗放' : level === 'fine' ? '精细' : '平衡';
+  return `【颗粒度:${label}】这一段期望产出 ${cfg[mode]} 个步骤。${cfg.policy}`;
 }
 
 function detailHint(level?: 1 | 2 | 3): string {
@@ -89,11 +103,13 @@ export function buildUserPrompt({
   detailLevel,
   tone,
   slidesMarkdown,
+  granularity,
 }: BuildUserPromptInput): string {
   const slidesBlock = slidesMarkdown
     ? `\n<slides-context>\n以下是讲师 PPT/PDF 原稿的全文大纲(整份课程,非本段专属)。字幕里的代码、命令、术语以原稿写法为准。\n\n${slidesMarkdown}\n</slides-context>\n`
     : '';
   return `${modeHint(mode)}
+${granularityHint(mode, granularity)}
 ${detailHint(detailLevel)}
 ${toneHint(tone)}
 ${slidesBlock}

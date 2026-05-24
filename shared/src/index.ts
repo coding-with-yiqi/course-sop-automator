@@ -52,6 +52,26 @@ export const PIPELINE_STAGE_META: Record<StageKey, StageMeta> = {
   },
 };
 
+export type Granularity = 'coarse' | 'normal' | 'fine';
+
+export const GRANULARITY_OPTIONS: { value: Granularity; label: string; description: string }[] = [
+  {
+    value: 'coarse',
+    label: '粗放概览',
+    description: '每段抽 2-6 个高层步骤,只保留核心节点',
+  },
+  {
+    value: 'normal',
+    label: '平衡',
+    description: '理论每个知识点 1 步、实操每个动作 1 步',
+  },
+  {
+    value: 'fine',
+    label: '精细拆解',
+    description: '把每个独立指令、子动作都拆成单独一步',
+  },
+];
+
 export interface StageEvent {
   stage: StageKey;
   status: StageStatus;
