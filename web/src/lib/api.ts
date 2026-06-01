@@ -277,6 +277,47 @@ export const api = {
     );
     return data.summary;
   },
+
+  // Settings
+  async getSettings(): Promise<Record<string, string>> {
+    const data = await unwrap<Record<string, string>>(await fetch('/api/settings'));
+    return data;
+  },
+
+  async updateSettings(settings: Record<string, string>): Promise<void> {
+    await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+  },
+
+  // Sync
+  async syncToNotion(
+    docId: string,
+    config: { token: string; parentPageId: string },
+  ): Promise<{ url: string }> {
+    return unwrap<{ url: string }>(
+      await fetch(`/api/documents/${docId}/sync/notion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      }),
+    );
+  },
+
+  async syncToYuque(
+    docId: string,
+    config: { token: string; namespace: string },
+  ): Promise<{ url: string }> {
+    return unwrap<{ url: string }>(
+      await fetch(`/api/documents/${docId}/sync/yuque`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      }),
+    );
+  },
 };
 
 export { ApiError };

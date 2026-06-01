@@ -28,6 +28,12 @@ const SYNC_PLATFORMS: ReadonlyArray<{
   { id: 'ima', label: '同步到 ima 知识库', letter: 'I', bg: 'bg-white', fg: 'text-indigo-600' },
 ];
 
+interface SyncState {
+  loading: boolean;
+  error: string | null;
+  url: string | null;
+}
+
 export function ReportDocument() {
   const { id } = useParams<{ id: string }>();
   const document = useEditStore((s) => s.document);
@@ -178,6 +184,7 @@ function ExportPanel({ documentId }: { documentId: string }) {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [syncStates, setSyncStates] = useState<Record<string, SyncState>>({});
 
   const docText = useDocumentAsText();
 
@@ -207,6 +214,53 @@ function ExportPanel({ documentId }: { documentId: string }) {
       setTimeout(() => setCopied(false), 1500);
     } catch {
       setError('复制失败');
+    }
+  }
+
+  async function handleSync(platform: string) {
+    setSyncStates((prev) => ({
+      ...prev,
+      [platform]: { loading: true, error: null, url: null },
+    }));
+    try {
+      let url: string;
+      if (platform === 'notion') {
+        // 从 settings 读取配置
+        const settings = await api.getSettings();
+        if (!settings.NOTION_TOKEN || !settings.NOTION_PARENT_PAGE_ID) {
+          throw new Error('请先配置 Notion Token 和 Parent Page ID');
+        }
+        const result = await api.syncToNotion(documentId, {
+          token: settings.NOTION_TOKEN,
+          parentPageId: settings.NOTION_PARENT_PAGE_ID,
+        });
+        url = result.url;
+      } else if (platform === 'yuque') {
+        const settings = await api.getSettings();
+        if (!settings.YUQUE_TOKEN || !settings.YUQUE_NAMESPACE) {
+          throw new Error('请先配置语雀 Token 和 Namespace');
+        }
+        const result = await api.syncToYuque(documentId, {
+          token: settings.YUQUE_TOKEN,
+          namespace: settings.YUQUE_NAMESPACE,
+        });
+        url = result.url;
+      } else {
+        throw new Error('该平台暂不支持');
+      }
+      setSyncStates((prev) => ({
+        ...prev,
+        [platform]: { loading: false, error: null, url },
+      }));
+    } catch (err) {
+      setSyncStates((prev) => ({
+        ...prev,
+        [platform]: {
+          loading: false,
+          error: err instanceof Error ? err.message : '同步失败',
+          url: null,
+        },
+      }));
     }
   }
 
@@ -246,23 +300,48 @@ function ExportPanel({ documentId }: { documentId: string }) {
       </div>
       <div className="pt-4 mt-4 border-t border-border-subtle">
         <p className="text-[11px] font-bold text-mist uppercase tracking-wider mb-3">
-          一键同步 (M7 接入)
+          一键同步
         </p>
         <div className="space-y-2">
-          {SYNC_PLATFORMS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              disabled
-              title="即将上线"
-              className="w-full flex items-center gap-3 p-3 bg-surface rounded-input transition-colors text-left opacity-70 cursor-not-allowed"
-            >
-              <span className={clsx('w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold', p.bg, p.fg)}>
-                {p.letter}
-              </span>
-              <span className="text-body-md text-on-surface">{p.label}</span>
-            </button>
-          ))}
+          {SYNC_PLATFORMS.map((p) => {
+            const state = syncStates[p.id] ?? { loading: false, error: null, url: null };
+            const isDisabled = p.id === 'yuanbao' || p.id === 'ima';
+            return (
+              <div key={p.id} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => handleSync(p.id)}
+                  disabled={isDisabled || state.loading}
+                  className={clsx(
+                    'w-full flex items-center gap-3 p-3 rounded-input transition-colors text-left',
+                    isDisabled
+                      ? 'bg-surface opacity-70 cursor-not-allowed'
+                      : 'bg-surface hover:bg-surface-bright border border-border-subtle hover:border-matcha',
+                  )}
+                >
+                  <span className={clsx('w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold', p.bg, p.fg)}>
+                    {p.letter}
+                  </span>
+                  <span className="text-body-md text-on-surface">
+                    {state.loading ? '同步中...' : state.url ? '已同步 ✓' : p.label}
+                  </span>
+                </button>
+                {state.error && (
+                  <p className="text-error text-body-sm bg-error-container/50 px-3 py-1.5 rounded-input">{state.error}</p>
+                )}
+                {state.url && (
+                  <a
+                    href={state.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-matcha text-body-sm hover:underline block px-1"
+                  >
+                    查看文档 →
+                  </a>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
       {error && (
