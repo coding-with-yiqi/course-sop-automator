@@ -153,8 +153,8 @@ const TEMPLATE_SOURCE = `<!doctype html>
     font-size: 13px;
     font-family: "SF Mono", Menlo, monospace;
   }
+  .screenshots { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 16px 0; }
   .screenshot {
-    margin: 16px 0;
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
@@ -224,9 +224,13 @@ const TEMPLATE_SOURCE = `<!doctype html>
       </h3>
       <p class="desc">{{shortDescription}}</p>
       <div class="body">{{{instructionRichText}}}</div>
-      {{#if screenshot}}
-      <div class="screenshot">
-        <img src="{{screenshot.url}}" alt="{{screenshot.alt}}" />
+      {{#if screenshots}}
+      <div class="screenshots">
+        {{#each screenshots}}
+        <div class="screenshot">
+          <img src="{{url}}" alt="{{alt}}" />
+        </div>
+        {{/each}}
       </div>
       {{/if}}
       {{#if codeBlock}}
@@ -275,9 +279,13 @@ export async function renderDocumentHtml(doc: SOPDocument): Promise<RenderResult
   const steps = await Promise.all(
     doc.steps.map(async (step) => {
       const next = { ...step };
-      if (step.screenshot?.url) {
-        const dataUrl = await inlineImageAsDataUrl(step.screenshot.url);
-        next.screenshot = { ...step.screenshot, url: dataUrl };
+      if (step.screenshots?.length) {
+        next.screenshots = await Promise.all(
+          step.screenshots.map(async (ss) => ({
+            ...ss,
+            url: await inlineImageAsDataUrl(ss.url),
+          })),
+        );
       }
       return next;
     }),

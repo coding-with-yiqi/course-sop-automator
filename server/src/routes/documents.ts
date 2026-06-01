@@ -21,10 +21,13 @@ import { documents, tasks } from '../db/schema.ts';
 import { paths } from '../util/paths.ts';
 import { log } from '../util/log.ts';
 import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.ts';
+import { dhash, hammingDistance } from '../ffmpeg/dedupe.ts';
 import { kimi, KIMI_MODEL } from '../llm/kimi.ts';
 import { generateCourseSummary } from '../llm/summary.ts';
 import { renderDocumentHtml } from '../export/html.ts';
 import { parseSlides } from '../slides/parse.ts';
+import { batchOcr } from '../ocr/paddle.ts';
+import { analyzeCandidates } from '../llm/screenshot-analyze.ts';
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: ['p', 'strong', 'em', 'code', 'a', 'br', 'span'],
@@ -40,13 +43,24 @@ function sanitize(richText: string): string {
 }
 
 function deserialize(row: typeof documents.$inferSelect): SOPDocument {
+  const rawSteps = JSON.parse(row.stepsJson) as Array<Record<string, unknown>>;
+  const steps: SOPStep[] = rawSteps.map((raw) => {
+    // 旧数据兼容：单张 screenshot → screenshots 数组
+    const migrated = { ...raw } as Record<string, unknown>;
+    if (!('screenshots' in migrated) && 'screenshot' in migrated) {
+      const old = migrated.screenshot as SOPScreenshot | null;
+      migrated.screenshots = old ? [old] : [];
+      delete migrated.screenshot;
+    }
+    return migrated as unknown as SOPStep;
+  });
   return {
     id: row.id,
     taskId: row.taskId,
     title: row.title,
     speaker: row.speakerJson ? (JSON.parse(row.speakerJson) as SOPSpeaker) : null,
     summary: row.summaryText ?? '',
-    steps: JSON.parse(row.stepsJson) as SOPStep[],
+    steps,
     aiSettings: JSON.parse(row.aiSettingsJson) as SOPAiSettings,
     lastEditedAt: row.lastEditedAt,
     createdAt: row.createdAt,
@@ -170,8 +184,8 @@ export function registerDocumentRoutes(app: FastifyInstance): void {
         if (partial.codeBlock !== undefined) {
           target.codeBlock = partial.codeBlock as SOPCodeBlock | null;
         }
-        if (partial.screenshot !== undefined) {
-          target.screenshot = partial.screenshot as SOPScreenshot | null;
+        if (partial.screenshots !== undefined) {
+          target.screenshots = (partial.screenshots as SOPScreenshot[]) ?? [];
         }
         if (partial.accentColor) target.accentColor = partial.accentColor;
         if (typeof partial.timestampSec === 'number' && partial.timestampSec >= 0) {
@@ -224,7 +238,7 @@ export function registerDocumentRoutes(app: FastifyInstance): void {
       shortDescription: '',
       instructionRichText: '',
       timestampSec: ts,
-      screenshot: null,
+      screenshots: [],
       codeBlock: null,
       accentColor: ACCENT_CYCLE[targetIdx % ACCENT_CYCLE.length],
       status: 'editing',
@@ -485,7 +499,7 @@ ${assetBlock}
         .status(404)
         .send({ ok: false, error: { code: 'NOT_FOUND', message: '步骤不存在' } });
     }
-    const window = Math.min(Math.max(req.body.windowSec ?? 5, 1), 30);
+    const window = Math.min(Math.max(req.body.windowSec ?? 5, 1), 180);
     const duration = task.videoDurationSec ?? step.timestampSec + window;
     const stepIdx = stepNumber - 1;
     const dir = paths.frames(task.id, stepIdx);
@@ -504,11 +518,168 @@ ${assetBlock}
         .status(500)
         .send({ ok: false, error: { code: 'FFMPEG_FAILED', message: '重抓帧失败' } });
     }
-    const items = targets.map((t, idx) => ({
-      url: `/files/${path.relative(paths.root, t.outPath)}`,
-      timestamp: candidates[idx],
+
+    // 对候选帧做 dHash 去重：hamming distance ≤ 4 视为重复（比管道更严格）
+    const hashes = await Promise.all(
+      targets.map(async (t) => {
+        try {
+          return await dhash(t.outPath);
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const keep = new Set<number>();
+    for (let i = 0; i < targets.length; i++) {
+      if (hashes[i] === null) continue;
+      let isDup = false;
+      for (let j = 0; j < i; j++) {
+        if (hashes[j] === null) continue;
+        if (hammingDistance(hashes[i]!, hashes[j]!) <= 4) {
+          isDup = true;
+          break;
+        }
+      }
+      if (!isDup) keep.add(i);
+    }
+
+    const deduped = targets
+      .map((t, idx) => ({ url: `/files/${path.relative(paths.root, t.outPath)}`, timestamp: candidates[idx], idx }))
+      .filter((_, idx) => keep.has(idx));
+
+    log.info(
+      { total: targets.length, kept: deduped.length, stepNumber, taskId: task.id },
+      'rescan deduped candidates',
+    );
+
+    return { ok: true, data: { candidates: deduped } };
+  });
+
+  // 一键抓取：扫描窗口内所有帧，去重后直接全部保存为步骤截图
+  app.post<{
+    Params: { id: string; n: string };
+    Body: { windowSec?: number };
+  }>('/api/documents/:id/steps/:n/screenshot/auto-capture', async (req, reply) => {
+    const doc = loadDocument(req.params.id);
+    if (!doc) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '文档不存在' } });
+    }
+    const task = loadTaskByDocument(doc.id);
+    if (!task) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '任务不存在' } });
+    }
+    const stepNumber = Number(req.params.n);
+    const step = findStep(doc, stepNumber);
+    if (!step) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '步骤不存在' } });
+    }
+
+    const window = Math.min(Math.max(req.body.windowSec ?? 5, 1), 180);
+    const duration = task.videoDurationSec ?? step.timestampSec + window;
+    const stepIdx = stepNumber - 1;
+    const dir = paths.frames(task.id, stepIdx);
+    await fs.mkdir(dir, { recursive: true });
+    const videoPath = path.join(paths.uploads(task.id), pickVideoFile(task.videoFileName));
+    const timestamps = candidateTimestamps(step.timestampSec, duration, window);
+    const targets = timestamps.map((ts, idx) => ({
+      timestampSec: ts,
+      outPath: path.join(dir, `candidate-${idx}.jpg`),
     }));
-    return { ok: true, data: { candidates: items } };
+
+    try {
+      await extractFrames(videoPath, targets);
+    } catch (err) {
+      log.error({ err }, 'auto-capture ffmpeg failed');
+      return reply
+        .status(500)
+        .send({ ok: false, error: { code: 'FFMPEG_FAILED', message: '抓帧失败' } });
+    }
+
+    // dHash 去重
+    const hashes = await Promise.all(
+      targets.map(async (t) => {
+        try {
+          return await dhash(t.outPath);
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const keep = new Set<number>();
+    for (let i = 0; i < targets.length; i++) {
+      if (hashes[i] === null) continue;
+      let isDup = false;
+      for (let j = 0; j < i; j++) {
+        if (hashes[j] === null) continue;
+        if (hammingDistance(hashes[i]!, hashes[j]!) <= 4) {
+          isDup = true;
+          break;
+        }
+      }
+      if (!isDup) keep.add(i);
+    }
+
+    // 把保留的帧全部追加为截图（复制到 selected-*.jpg）
+    let added = 0;
+    for (const idx of keep) {
+      const source = targets[idx].outPath;
+      const dest = path.join(dir, `selected-${Date.now()}-${idx}.jpg`);
+      try {
+        await fs.copyFile(source, dest);
+        const url = `/files/${path.relative(paths.root, dest)}`;
+        step.screenshots.push({ url, alt: step.title });
+        added++;
+      } catch (err) {
+        log.warn({ err, source }, 'auto-capture copy failed');
+      }
+    }
+
+    persistDocument(doc);
+    log.info(
+      { total: targets.length, kept: keep.size, added, stepNumber, taskId: task.id },
+      'auto-capture completed',
+    );
+    return { ok: true, data: { step } };
+  });
+
+  app.post<{
+    Params: { id: string; n: string };
+    Body: { candidates: Array<{ url: string; timestamp: number }> };
+  }>('/api/documents/:id/steps/:n/screenshot/analyze', async (req, reply) => {
+    const candidates = req.body.candidates;
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      return reply.status(400).send({
+        ok: false,
+        error: { code: 'BAD_REQUEST', message: '缺少候选列表' },
+      });
+    }
+
+    // 批量 OCR：并发提交所有 Job，然后并发轮询（总耗时 ≈ 最慢一张）
+    const imagePaths = candidates
+      .map((c) => {
+        const rel = c.url.replace(/^\/files\//, '').split('?')[0];
+        const abs = path.resolve(paths.root, rel);
+        return abs.startsWith(paths.root) ? abs : null;
+      })
+      .filter((p): p is string => p !== null);
+
+    const ocrTexts = await batchOcr(imagePaths);
+
+    const ocrResults = candidates.map((c, i) => ({
+      timestamp: c.timestamp,
+      ocrText: ocrTexts[i]?.text ?? '',
+    }));
+
+    const analyses = await analyzeCandidates(ocrResults);
+    return { ok: true, data: { analyses } };
   });
 
   app.post<{
@@ -582,7 +753,8 @@ ${assetBlock}
     const stepIdx = stepNumber - 1;
     const dir = paths.frames(task.id, stepIdx);
     await fs.mkdir(dir, { recursive: true });
-    const outPath = path.join(dir, 'selected.jpg');
+    const uniq = `selected-${Date.now()}.jpg`;
+    const outPath = path.join(dir, uniq);
 
     if (req.body.crop) {
       const { x, y, w, h } = req.body.crop;
@@ -594,7 +766,68 @@ ${assetBlock}
       await fs.copyFile(sourceAbs, outPath);
     }
     const url = `/files/${path.relative(paths.root, outPath)}?t=${Date.now()}`;
-    step.screenshot = { url, alt: step.title };
+    step.screenshots.push({ url, alt: step.title });
+    persistDocument(doc);
+    return { ok: true, data: { step } };
+  });
+
+  app.delete<{
+    Params: { id: string; n: string; idx: string };
+  }>('/api/documents/:id/steps/:n/screenshots/:idx', async (req, reply) => {
+    const doc = loadDocument(req.params.id);
+    if (!doc) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '文档不存在' } });
+    }
+    const stepNumber = Number(req.params.n);
+    const step = findStep(doc, stepNumber);
+    if (!step) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '步骤不存在' } });
+    }
+    const idx = Number(req.params.idx);
+    if (!Number.isFinite(idx) || idx < 0 || idx >= step.screenshots.length) {
+      return reply
+        .status(400)
+        .send({ ok: false, error: { code: 'BAD_REQUEST', message: '索引非法' } });
+    }
+    step.screenshots.splice(idx, 1);
+    persistDocument(doc);
+    return { ok: true, data: { step } };
+  });
+
+  app.patch<{
+    Params: { id: string; n: string };
+    Body: { order: number[] };
+  }>('/api/documents/:id/steps/:n/screenshots/reorder', async (req, reply) => {
+    const doc = loadDocument(req.params.id);
+    if (!doc) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '文档不存在' } });
+    }
+    const stepNumber = Number(req.params.n);
+    const step = findStep(doc, stepNumber);
+    if (!step) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '步骤不存在' } });
+    }
+    const order = req.body.order;
+    if (!Array.isArray(order) || order.length !== step.screenshots.length) {
+      return reply
+        .status(400)
+        .send({ ok: false, error: { code: 'BAD_REQUEST', message: '排序索引非法' } });
+    }
+    const reordered = order.map((i) => step.screenshots[i]).filter(Boolean);
+    if (reordered.length !== step.screenshots.length) {
+      return reply
+        .status(400)
+        .send({ ok: false, error: { code: 'BAD_REQUEST', message: '排序索引非法' } });
+    }
+    step.screenshots = reordered;
     persistDocument(doc);
     return { ok: true, data: { step } };
   });

@@ -248,7 +248,7 @@ export const useEditStore = create<EditState>((set, get) => ({
           shortDescription: s.shortDescription,
           instructionRichText: s.instructionRichText,
           codeBlock: s.codeBlock,
-          screenshot: s.screenshot,
+          screenshots: s.screenshots,
           accentColor: s.accentColor,
           timestampSec: s.timestampSec,
         }));

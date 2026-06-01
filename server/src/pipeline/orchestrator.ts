@@ -164,23 +164,29 @@ async function callKimi(
     granularity,
   });
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const temperature = attempt === 0 ? 0.2 : 0;
-    const response = await kimi().chat.completions.create({
-      model: KIMI_MODEL,
-      temperature,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: user },
-      ],
-    });
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      log.warn({ attempt }, 'Kimi returned empty content');
-      continue;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    // 指数退避：0s, 2s, 4s, 8s, 16s
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
     }
+
+    const temperature = attempt === 0 ? 0.2 : 0;
+    let content: string | null | undefined;
     try {
+      const response = await kimi().chat.completions.create({
+        model: KIMI_MODEL,
+        temperature,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: user },
+        ],
+      });
+      content = response.choices[0]?.message?.content;
+      if (!content) {
+        log.warn({ attempt }, 'Kimi returned empty content');
+        continue;
+      }
       const parsed = JSON.parse(content);
       const result = LlmResponseSchema.parse(parsed);
       return result.steps.map((step) => ({
@@ -189,7 +195,19 @@ async function callKimi(
         codeBlock: step.codeBlock ? sanitizeCodeBlock(step.codeBlock) : null,
       }));
     } catch (err) {
-      log.warn({ attempt, err: (err as Error).message, content: content.slice(0, 200) }, 'LLM response invalid');
+      const issues = err instanceof Error && 'issues' in err
+        ? (err as { issues: unknown }).issues
+        : undefined;
+      log.warn(
+        {
+          attempt,
+          err: (err as Error).message,
+          issues,
+          contentPreview: content?.slice(0, 500),
+          contentLength: content?.length,
+        },
+        'LLM response invalid',
+      );
     }
   }
   throw new Error('Kimi 返回的 JSON 多次校验失败');
@@ -298,7 +316,7 @@ async function stageAssemble(
       shortDescription: step.shortDescription,
       instructionRichText: step.instructionRichText,
       timestampSec: step.timestampSec,
-      screenshot: frame ? { url: frame.relativeUrl, alt: step.title } : null,
+      screenshots: frame ? [{ url: frame.relativeUrl, alt: step.title }] : [],
       codeBlock: step.codeBlock ?? null,
       accentColor: step.accentColor ?? ACCENT_CYCLE[idx % ACCENT_CYCLE.length],
       status: 'completed',

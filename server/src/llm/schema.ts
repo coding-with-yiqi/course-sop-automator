@@ -4,26 +4,29 @@ import { z } from 'zod';
  * Schema that the LLM must produce. Validated server-side; mismatches trigger
  * a retry at lower temperature, then bubble up as a stage error.
  */
-export const StepLanguageSchema = z.enum([
-  'jsx',
-  'tsx',
-  'ts',
-  'js',
-  'python',
-  'bash',
-  'shell',
-  'sh',
-  'json',
-  'yaml',
-  'sql',
-  'html',
-  'css',
-  'go',
-  'rust',
-  'java',
-  'text',
-  'other',
-]);
+// 放宽 language 约束：Kimi 可能返回不在白名单中的值（如 javascript / plaintext / powershell）
+export const StepLanguageSchema = z
+  .enum([
+    'jsx',
+    'tsx',
+    'ts',
+    'js',
+    'python',
+    'bash',
+    'shell',
+    'sh',
+    'json',
+    'yaml',
+    'sql',
+    'html',
+    'css',
+    'go',
+    'rust',
+    'java',
+    'text',
+    'other',
+  ])
+  .catch('other');
 
 export const StepCodeBlockSchema = z.object({
   language: StepLanguageSchema,

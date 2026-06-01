@@ -75,8 +75,9 @@ export async function extractFrames(
 }
 
 /**
- * Given a step's anchor timestamp, return 5 candidate timestamps clamped to the
- * video duration: [t-2, t-1, t, t+1, t+2].
+ * Given a step's anchor timestamp, return candidate timestamps clamped to the
+ * video duration. Small windows (≤15s) sample every second; larger windows
+ * sample at most 12 frames spread evenly so the grid never explodes.
  */
 export function candidateTimestamps(
   anchorSec: number,
@@ -84,9 +85,21 @@ export function candidateTimestamps(
   window = 2,
 ): number[] {
   const out: number[] = [];
-  for (let off = -window; off <= window; off += 1) {
-    const ts = Math.max(0.1, Math.min(durationSec - 0.1, anchorSec + off));
-    out.push(Number(ts.toFixed(3)));
+  if (window <= 15) {
+    // 小窗口：每秒 1 帧，密度高
+    for (let off = -window; off <= window; off += 1) {
+      const ts = Math.max(0.1, Math.min(durationSec - 0.1, anchorSec + off));
+      out.push(Number(ts.toFixed(3)));
+    }
+  } else {
+    // 大窗口：固定 12 帧，均匀分布
+    const count: number = 12;
+    const half = window;
+    for (let i = 0; i < count; i++) {
+      const ratio = count === 1 ? 0.5 : i / (count - 1);
+      const ts = Math.max(0.1, Math.min(durationSec - 0.1, anchorSec - half + ratio * half * 2));
+      out.push(Number(ts.toFixed(3)));
+    }
   }
   return Array.from(new Set(out));
 }

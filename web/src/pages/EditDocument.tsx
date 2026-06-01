@@ -198,8 +198,8 @@ export function EditDocument() {
           onClose={() => setScreenshotOpen(false)}
           documentId={document.id}
           stepNumber={selectedStep.stepNumber}
-          currentUrl={selectedStep.screenshot?.url ?? null}
-          onSelected={(step) => replaceStep(step.stepNumber, step)}
+          screenshots={selectedStep.screenshots ?? []}
+          onUpdated={(step) => replaceStep(step.stepNumber, step)}
         />
       )}
 

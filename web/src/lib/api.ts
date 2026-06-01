@@ -29,6 +29,13 @@ export interface ScreenshotCandidate {
   timestamp: number;
 }
 
+export interface CandidateAnalysis {
+  timestamp: number;
+  summary: string;
+  score: number;
+  tags: string[];
+}
+
 export interface DocumentPatch {
   title?: string;
   speaker?: SOPSpeaker | null;
@@ -130,6 +137,36 @@ export const api = {
     return data.candidates;
   },
 
+  async autoCapture(
+    docId: string,
+    stepNumber: number,
+    windowSec = 5,
+  ): Promise<SOPStep> {
+    const data = await unwrap<{ step: SOPStep }>(
+      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshot/auto-capture`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ windowSec }),
+      }),
+    );
+    return data.step;
+  },
+
+  async analyzeCandidates(
+    docId: string,
+    stepNumber: number,
+    candidates: ScreenshotCandidate[],
+  ): Promise<CandidateAnalysis[]> {
+    const data = await unwrap<{ analyses: CandidateAnalysis[] }>(
+      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshot/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidates }),
+      }),
+    );
+    return data.analyses;
+  },
+
   async uploadScreenshot(
     docId: string,
     stepNumber: number,
@@ -156,6 +193,26 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+      }),
+    );
+    return data.step;
+  },
+
+  async deleteScreenshot(docId: string, stepNumber: number, idx: number): Promise<SOPStep> {
+    const data = await unwrap<{ step: SOPStep }>(
+      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshots/${idx}`, {
+        method: 'DELETE',
+      }),
+    );
+    return data.step;
+  },
+
+  async reorderScreenshots(docId: string, stepNumber: number, order: number[]): Promise<SOPStep> {
+    const data = await unwrap<{ step: SOPStep }>(
+      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshots/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order }),
       }),
     );
     return data.step;

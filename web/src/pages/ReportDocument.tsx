@@ -154,9 +154,15 @@ function StepView({ step }: { step: SOPStep }) {
         className="text-body-md text-on-surface leading-relaxed mb-4 [&_code]:bg-surface-bright [&_code]:text-matcha [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-[13px]"
         dangerouslySetInnerHTML={{ __html: step.instructionRichText }}
       />
-      {step.screenshot && (
-        <div className="my-4 rounded-card overflow-hidden border border-border-subtle shadow-card">
-          <img src={step.screenshot.url} alt={step.screenshot.alt} className="w-full block" />
+      {step.screenshots && step.screenshots.length > 0 && (
+        <div className="my-4 space-y-4">
+          {step.screenshots.map((ss, i) => (
+            <div key={`${ss.url}-${i}`} className="flex justify-center">
+              <div className="rounded-card overflow-hidden border border-border-subtle shadow-card max-w-full">
+                <img src={ss.url} alt={ss.alt} className="max-h-[400px] w-auto block" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
       {step.codeBlock && (

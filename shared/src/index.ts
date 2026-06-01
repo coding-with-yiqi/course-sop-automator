@@ -155,7 +155,8 @@ export interface SOPStep {
   shortDescription: string;
   instructionRichText: string;
   timestampSec: number;
-  screenshot: SOPScreenshot | null;
+  /** 多张截图（旧数据迁移时自动把单张 wrap 成数组） */
+  screenshots: SOPScreenshot[];
   codeBlock: SOPCodeBlock | null;
   accentColor: AccentColor;
   status: 'pending' | 'editing' | 'completed';

@@ -141,7 +141,9 @@ function ScreenshotArea({
   step: SOPStep;
   onOpenScreenshot: () => void;
 }) {
-  if (!step.screenshot) {
+  const count = step.screenshots?.length ?? 0;
+
+  if (count === 0) {
     return (
       <div className="px-6 py-10 bg-canvas border-b border-border-subtle flex justify-center">
         <button
@@ -154,19 +156,25 @@ function ScreenshotArea({
       </div>
     );
   }
+
   return (
-    <div className="p-6 bg-canvas flex justify-center items-center border-b border-border-subtle relative group/screen">
-      <img
-        alt={step.screenshot.alt}
-        src={step.screenshot.url}
-        className="rounded-input shadow-card max-h-[260px] w-auto border border-border-subtle object-cover"
-      />
+    <div className="p-6 bg-canvas border-b border-border-subtle relative group/screen space-y-4">
+      {step.screenshots.map((ss, i) => (
+        <div key={ss.url} className="flex justify-center">
+          <img
+            alt={ss.alt}
+            src={ss.url}
+            className="rounded-input shadow-card max-h-[260px] w-auto border border-border-subtle object-cover"
+            title={`截图 ${i + 1}/${count}`}
+          />
+        </div>
+      ))}
       <button
         type="button"
         onClick={onOpenScreenshot}
         className="absolute bottom-4 right-8 glass-panel px-3 py-1.5 rounded-input border border-border-subtle shadow-card flex items-center gap-2 text-sm text-on-surface hover:bg-surface transition-colors opacity-0 group-hover/screen:opacity-100"
       >
-        编辑截图
+        编辑截图 {count > 0 ? `(${count})` : ''}
       </button>
     </div>
   );
