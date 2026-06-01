@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import pLimit from 'p-limit';
 import { log } from '../util/log.ts';
+import { getFfmpegPaths } from './detect.ts';
 
 const limit = pLimit(4);
 
@@ -26,8 +27,9 @@ export interface ExtractTarget {
 async function extractOne(videoPath: string, target: ExtractTarget): Promise<boolean> {
   await fs.mkdir(path.dirname(target.outPath), { recursive: true });
   try {
+    const { ffmpeg } = getFfmpegPaths();
     await execa(
-      'ffmpeg',
+      ffmpeg,
       [
         '-hide_banner',
         '-loglevel', 'error',

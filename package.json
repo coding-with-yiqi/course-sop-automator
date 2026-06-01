@@ -12,7 +12,13 @@
     "dev": "concurrently -n server,web -c green,cyan \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm --workspace server run dev",
     "dev:web": "npm --workspace web run dev",
+    "dev:electron": "NODE_ENV=development electron electron/dist/main.mjs",
     "build": "npm --workspace shared run build && npm --workspace web run build && npm --workspace server run build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "dist": "npm run build && npm run build:electron && electron-builder",
+    "dist:mac": "npm run build && npm run build:electron && electron-builder --mac",
+    "dist:win": "npm run build && npm run build:electron && electron-builder --win",
+    "download:ffmpeg": "node scripts/download-ffmpeg.js",
     "start": "node server/dist/index.js",
     "db:migrate": "npm --workspace server run db:migrate",
     "test": "npm --workspace server run test && npm --workspace web run test",
@@ -20,9 +26,59 @@
     "test:coverage": "npm --workspace server run test:coverage && npm --workspace web run test:coverage"
   },
   "devDependencies": {
-    "concurrently": "^9.0.1"
+    "concurrently": "^9.0.1",
+    "electron": "^34.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-updater": "^6.6.0"
   },
   "engines": {
     "node": ">=20"
+  },
+  "build": {
+    "appId": "com.sop-automator.app",
+    "productName": "Course SOP Automator",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/dist/**/*",
+      "server/dist/**/*",
+      "web/dist/**/*",
+      "shared/dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "server/node_modules/better-sqlite3",
+        "to": "app/server/node_modules/better-sqlite3"
+      },
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

@@ -1,12 +1,14 @@
 import { execa } from 'execa';
+import { getFfmpegPaths } from './detect.ts';
 
 export interface ProbeResult {
   durationSec: number;
 }
 
 export async function probeVideo(filePath: string): Promise<ProbeResult> {
+  const { ffprobe } = getFfmpegPaths();
   const { stdout } = await execa(
-    'ffprobe',
+    ffprobe,
     ['-v', 'error', '-print_format', 'json', '-show_format', filePath],
     { timeout: 30_000 },
   );

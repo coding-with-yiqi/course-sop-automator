@@ -19,6 +19,15 @@ function initialStages(): Record<StageKey, StageEvent> {
   return map;
 }
 
+/**
+ * Same logic as api.ts: in Electron production builds the page is served
+ * from file:// so we need an absolute origin for the EventSource.
+ */
+const SSE_BASE =
+  typeof window !== 'undefined' && window.location.protocol === 'file:'
+    ? 'http://127.0.0.1:4000'
+    : '';
+
 export function useTaskStream(taskId: string | null): TaskStreamState {
   const [stages, setStages] = useState<Record<StageKey, StageEvent>>(initialStages);
   const [documentId, setDocumentId] = useState<string | null>(null);
@@ -35,7 +44,7 @@ export function useTaskStream(taskId: string | null): TaskStreamState {
     }
 
     setConnectionState('connecting');
-    const es = new EventSource(`/api/tasks/${taskId}/stream`);
+    const es = new EventSource(`${SSE_BASE}/api/tasks/${taskId}/stream`);
 
     es.addEventListener('stage', (event) => {
       try {

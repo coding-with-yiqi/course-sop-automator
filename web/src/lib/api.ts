@@ -18,6 +18,20 @@ class ApiError extends Error {
   }
 }
 
+/**
+ * In Electron production builds the frontend is served from file:// and
+ * there is no Vite dev-server proxy.  We detect that case and prepend the
+ * local server origin (the main process starts the server on a known port).
+ */
+const API_BASE =
+  typeof window !== 'undefined' && window.location.protocol === 'file:'
+    ? 'http://127.0.0.1:4000'
+    : '';
+
+function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 async function unwrap<T>(res: Response): Promise<T> {
   const json = (await res.json()) as ApiEnvelope<T>;
   if (!json.ok) throw new ApiError(json.error.code, json.error.message);
@@ -46,16 +60,16 @@ export interface DocumentPatch {
 
 export const api = {
   async health(): Promise<HealthResponse> {
-    return unwrap<HealthResponse>(await fetch('/api/health'));
+    return unwrap<HealthResponse>(await fetch(apiUrl('/api/health')));
   },
 
   async listTasks(): Promise<Task[]> {
-    const data = await unwrap<{ tasks: Task[] }>(await fetch('/api/tasks'));
+    const data = await unwrap<{ tasks: Task[] }>(await fetch(apiUrl('/api/tasks')));
     return data.tasks;
   },
 
   async getTask(id: string): Promise<Task> {
-    const data = await unwrap<{ task: Task }>(await fetch(`/api/tasks/${id}`));
+    const data = await unwrap<{ task: Task }>(await fetch(apiUrl(`/api/tasks/${id}`)));
     return data.task;
   },
 
@@ -73,32 +87,32 @@ export const api = {
     if (input.subtitle) fd.append('subtitle', input.subtitle);
     if (input.slides) fd.append('slides', input.slides);
     return unwrap<CreateTaskResponse>(
-      await fetch('/api/tasks', { method: 'POST', body: fd }),
+      await fetch(apiUrl('/api/tasks'), { method: 'POST', body: fd }),
     );
   },
 
   async retryTask(id: string): Promise<CreateTaskResponse> {
     return unwrap<CreateTaskResponse>(
-      await fetch(`/api/tasks/${id}/retry`, { method: 'POST' }),
+      await fetch(apiUrl(`/api/tasks/${id}/retry`), { method: 'POST' }),
     );
   },
 
   async deleteTask(id: string): Promise<void> {
     await unwrap<{ taskId: string }>(
-      await fetch(`/api/tasks/${id}`, { method: 'DELETE' }),
+      await fetch(apiUrl(`/api/tasks/${id}`), { method: 'DELETE' }),
     );
   },
 
   async getDocument(id: string): Promise<SOPDocument> {
     const data = await unwrap<{ document: SOPDocument }>(
-      await fetch(`/api/documents/${id}`),
+      await fetch(apiUrl(`/api/documents/${id}`)),
     );
     return data.document;
   },
 
   async patchDocument(id: string, patch: DocumentPatch): Promise<SOPDocument> {
     const data = await unwrap<{ document: SOPDocument }>(
-      await fetch(`/api/documents/${id}`, {
+      await fetch(apiUrl(`/api/documents/${id}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -113,7 +127,7 @@ export const api = {
     body: { detailLevel?: 1 | 2 | 3; tone?: 'technical' | 'beginner'; userHint?: string },
   ): Promise<SOPStep> {
     const data = await unwrap<{ step: SOPStep }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/regenerate`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/regenerate`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -128,7 +142,7 @@ export const api = {
     windowSec = 5,
   ): Promise<ScreenshotCandidate[]> {
     const data = await unwrap<{ candidates: ScreenshotCandidate[] }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshot/rescan`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/screenshot/rescan`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ windowSec }),
@@ -143,7 +157,7 @@ export const api = {
     windowSec = 5,
   ): Promise<SOPStep> {
     const data = await unwrap<{ step: SOPStep }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshot/auto-capture`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/screenshot/auto-capture`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ windowSec }),
@@ -158,7 +172,7 @@ export const api = {
     candidates: ScreenshotCandidate[],
   ): Promise<CandidateAnalysis[]> {
     const data = await unwrap<{ analyses: CandidateAnalysis[] }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshot/analyze`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/screenshot/analyze`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidates }),
@@ -175,7 +189,7 @@ export const api = {
     const fd = new FormData();
     fd.append('image', file);
     const data = await unwrap<{ url: string }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshot/upload`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/screenshot/upload`), {
         method: 'POST',
         body: fd,
       }),
@@ -189,7 +203,7 @@ export const api = {
     body: { url: string; crop?: { x: number; y: number; w: number; h: number } },
   ): Promise<SOPStep> {
     const data = await unwrap<{ step: SOPStep }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshot/select`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/screenshot/select`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -200,7 +214,7 @@ export const api = {
 
   async deleteScreenshot(docId: string, stepNumber: number, idx: number): Promise<SOPStep> {
     const data = await unwrap<{ step: SOPStep }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshots/${idx}`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/screenshots/${idx}`), {
         method: 'DELETE',
       }),
     );
@@ -209,7 +223,7 @@ export const api = {
 
   async reorderScreenshots(docId: string, stepNumber: number, order: number[]): Promise<SOPStep> {
     const data = await unwrap<{ step: SOPStep }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/screenshots/reorder`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/screenshots/reorder`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order }),
@@ -220,7 +234,7 @@ export const api = {
 
   async exportHtml(docId: string): Promise<{ downloadUrl: string; fileName: string }> {
     return unwrap<{ downloadUrl: string; fileName: string }>(
-      await fetch(`/api/documents/${docId}/export/html`, {
+      await fetch(apiUrl(`/api/documents/${docId}/export/html`), {
         method: 'POST',
       }),
     );
@@ -231,7 +245,7 @@ export const api = {
     body: { afterStepNumber: number; title?: string; timestampSec?: number },
   ): Promise<{ document: SOPDocument; insertedStepNumber: number }> {
     return unwrap<{ document: SOPDocument; insertedStepNumber: number }>(
-      await fetch(`/api/documents/${docId}/steps/insert`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/insert`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -241,7 +255,7 @@ export const api = {
 
   async deleteStep(docId: string, stepNumber: number): Promise<SOPDocument> {
     const data = await unwrap<{ document: SOPDocument }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}`, { method: 'DELETE' }),
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}`), { method: 'DELETE' }),
     );
     return data.document;
   },
@@ -254,7 +268,7 @@ export const api = {
     const fd = new FormData();
     fd.append('file', file);
     return unwrap<{ step: SOPStep; asset: SOPStepAsset }>(
-      await fetch(`/api/documents/${docId}/steps/${stepNumber}/assets`, {
+      await fetch(apiUrl(`/api/documents/${docId}/steps/${stepNumber}/assets`), {
         method: 'POST',
         body: fd,
       }),
@@ -264,7 +278,7 @@ export const api = {
   async deleteStepAsset(docId: string, stepNumber: number, assetName: string): Promise<SOPStep> {
     const data = await unwrap<{ step: SOPStep }>(
       await fetch(
-        `/api/documents/${docId}/steps/${stepNumber}/assets/${encodeURIComponent(assetName)}`,
+        apiUrl(`/api/documents/${docId}/steps/${stepNumber}/assets/${encodeURIComponent(assetName)}`),
         { method: 'DELETE' },
       ),
     );
@@ -273,19 +287,19 @@ export const api = {
 
   async regenerateSummary(docId: string): Promise<string> {
     const data = await unwrap<{ summary: string }>(
-      await fetch(`/api/documents/${docId}/summary/regenerate`, { method: 'POST' }),
+      await fetch(apiUrl(`/api/documents/${docId}/summary/regenerate`), { method: 'POST' }),
     );
     return data.summary;
   },
 
   // Settings
   async getSettings(): Promise<Record<string, string>> {
-    const data = await unwrap<Record<string, string>>(await fetch('/api/settings'));
+    const data = await unwrap<Record<string, string>>(await fetch(apiUrl('/api/settings')));
     return data;
   },
 
   async updateSettings(settings: Record<string, string>): Promise<void> {
-    await fetch('/api/settings', {
+    await fetch(apiUrl('/api/settings'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
@@ -298,7 +312,7 @@ export const api = {
     config: { token: string; parentPageId: string },
   ): Promise<{ url: string }> {
     return unwrap<{ url: string }>(
-      await fetch(`/api/documents/${docId}/sync/notion`, {
+      await fetch(apiUrl(`/api/documents/${docId}/sync/notion`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -311,7 +325,7 @@ export const api = {
     config: { token: string; namespace: string },
   ): Promise<{ url: string }> {
     return unwrap<{ url: string }>(
-      await fetch(`/api/documents/${docId}/sync/yuque`, {
+      await fetch(apiUrl(`/api/documents/${docId}/sync/yuque`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

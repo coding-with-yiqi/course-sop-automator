@@ -8,9 +8,28 @@ import { z } from 'zod';
 const here = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(here, '../../.env') });
 
+// In Electron the main process already sets DATA_DIR before spawning the
+// server, so we respect that override rather than falling back to defaults.
+function getDefaultDataDir(): string {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  if (process.env.ELECTRON_MODE === 'true') {
+    const os = require('node:os');
+    const path = require('node:path');
+    const platform = os.platform();
+    if (platform === 'darwin') {
+      return path.join(os.homedir(), 'Library', 'Application Support', 'course-sop-automator', 'data');
+    }
+    if (platform === 'win32') {
+      return path.join(os.homedir(), 'AppData', 'Roaming', 'course-sop-automator', 'data');
+    }
+    return path.join(os.homedir(), '.config', 'course-sop-automator', 'data');
+  }
+  return './data';
+}
+
 const schema = z.object({
   PORT: z.coerce.number().default(4000),
-  DATA_DIR: z.string().default('./data'),
+  DATA_DIR: z.string().default(getDefaultDataDir()),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   KIMI_API_KEY: z.string().optional(),
   KIMI_BASE_URL: z.string().default('https://api.kimi.com/coding/v1'),
