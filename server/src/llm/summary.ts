@@ -1,5 +1,5 @@
 import type { SOPStep } from '@sop/shared';
-import { kimi, KIMI_MODEL } from './kimi.ts';
+import { llmClient, KIMI_MODEL } from './client.ts';
 
 interface SummaryInput {
   title: string;
@@ -24,7 +24,7 @@ ${steps.join('\n')}
 
 请输出 JSON。`;
 
-  const response = await kimi().chat.completions.create({
+  const response = await llmClient().chat.completions.create({
     model: KIMI_MODEL,
     temperature: 0.2,
     response_format: { type: 'json_object' },

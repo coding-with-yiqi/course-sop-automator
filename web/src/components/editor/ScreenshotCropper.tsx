@@ -156,7 +156,6 @@ export function ScreenshotCropper({
   }
 
   async function handleDelete(idx: number) {
-    if (!window.confirm('确认删除这张截图?')) return;
     setIsWorking(true);
     setError(null);
     try {

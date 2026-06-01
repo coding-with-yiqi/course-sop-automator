@@ -59,6 +59,12 @@ export function runMigrations(): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_documents_task ON documents(task_id);
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
 
   // Idempotent additive migrations for existing DBs (CREATE TABLE IF NOT EXISTS
@@ -79,3 +85,19 @@ function addColumnIfMissing(table: string, column: string, type: string): void {
 }
 
 export { sql };
+
+// Settings helpers
+export function getSetting(key: string): string | undefined {
+  const row = db.select().from(schema.settings).where(sql`${schema.settings.key} = ${key}`).get();
+  return row?.value;
+}
+
+export function setSetting(key: string, value: string): void {
+  db.insert(schema.settings)
+    .values({ key, value, updatedAt: Date.now() })
+    .onConflictDoUpdate({
+      target: schema.settings.key,
+      set: { value, updatedAt: Date.now() },
+    })
+    .run();
+}

@@ -136,11 +136,6 @@ export function Dashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    const target = tasks.find((t) => t.id === id);
-    const label = target?.title ?? '该任务';
-    if (!window.confirm(`确认删除「${label}」?\n关联的视频、字幕、关键帧、生成的文档都会被一并清除,不可恢复。`)) {
-      return;
-    }
     markBusy(id, true);
     setError(null);
     try {

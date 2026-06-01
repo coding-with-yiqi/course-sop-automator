@@ -17,3 +17,12 @@ export const paths = {
 export function ensureDir(dir: string): void {
   fs.mkdirSync(dir, { recursive: true });
 }
+
+/**
+ * Check whether `absPath` is safely contained within `paths.root`.
+ * Prevents directory traversal attacks by resolving the path and checking the prefix.
+ */
+export function isSafePath(absPath: string): boolean {
+  const resolved = path.resolve(absPath);
+  return resolved.startsWith(paths.root) && !resolved.includes('..');
+}

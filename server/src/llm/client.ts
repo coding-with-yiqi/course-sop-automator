@@ -3,7 +3,7 @@ import { env } from '../env.ts';
 
 let _client: OpenAI | null = null;
 
-export function kimi(): OpenAI {
+export function llmClient(): OpenAI {
   if (_client) return _client;
   if (!env.KIMI_API_KEY) {
     throw new Error('KIMI_API_KEY is not set in .env');

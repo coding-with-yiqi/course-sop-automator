@@ -2,7 +2,7 @@ import Handlebars from 'handlebars';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { SOPDocument, SOPStep } from '@sop/shared';
-import { paths } from '../util/paths.ts';
+import { paths, isSafePath } from '../util/paths.ts';
 import { log } from '../util/log.ts';
 
 const ACCENT_HEX: Record<SOPStep['accentColor'], string> = {
@@ -253,7 +253,7 @@ async function inlineImageAsDataUrl(rawUrl: string): Promise<string> {
   // Map /files/<rel> back to data dir absolute path.
   const rel = rawUrl.replace(/^\/files\//, '').split('?')[0];
   const abs = path.resolve(paths.root, rel);
-  if (!abs.startsWith(paths.root)) {
+  if (!isSafePath(abs)) {
     return rawUrl;
   }
   try {

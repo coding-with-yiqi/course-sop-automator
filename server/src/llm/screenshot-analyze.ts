@@ -1,4 +1,4 @@
-import { kimi, KIMI_MODEL } from './kimi.ts';
+import { llmClient, KIMI_MODEL } from './client.ts';
 import { log } from '../util/log.ts';
 
 export interface ScreenshotAnalysis {
@@ -44,7 +44,7 @@ export async function analyzeCandidates(
     .join('\n\n---\n\n');
 
   try {
-    const response = await kimi().chat.completions.create({
+    const response = await llmClient().chat.completions.create({
       model: KIMI_MODEL,
       temperature: 0.2,
       messages: [
@@ -116,7 +116,7 @@ export async function recommendSelection(
 [{ "keep": boolean, "reason": string }]`;
 
   try {
-    const response = await kimi().chat.completions.create({
+    const response = await llmClient().chat.completions.create({
       model: KIMI_MODEL,
       temperature: 0.2,
       messages: [

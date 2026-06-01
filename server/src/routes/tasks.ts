@@ -12,6 +12,28 @@ import { replay, subscribe, type PersistedStreamEvent } from '../pipeline/eventB
 import { log } from '../util/log.ts';
 import type { Granularity } from '@sop/shared';
 
+// 任务队列：限制同时运行的管线数量为 1，避免资源耗尽
+let _running = false;
+const _queue: Array<{ taskId: string; documentId: string }> = [];
+
+function enqueuePipeline(taskId: string, documentId: string): void {
+  if (_running) {
+    _queue.push({ taskId, documentId });
+    log.info({ taskId, queueLength: _queue.length }, 'pipeline queued');
+    return;
+  }
+  _running = true;
+  runPipeline(taskId, documentId)
+    .catch((err: unknown) => log.error({ err, taskId }, 'pipeline crashed'))
+    .finally(() => {
+      _running = false;
+      const next = _queue.shift();
+      if (next) {
+        enqueuePipeline(next.taskId, next.documentId);
+      }
+    });
+}
+
 export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/tasks', async (req, reply) => {
     const taskId = `task_${nanoid(12)}`;
@@ -84,9 +106,7 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
       })
       .run();
 
-    runPipeline(taskId, documentId).catch((err: unknown) =>
-      log.error({ err, taskId }, 'pipeline crashed'),
-    );
+    enqueuePipeline(taskId, documentId);
 
     return { ok: true, data: { taskId, documentId } };
   });
@@ -164,9 +184,18 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
       .run();
     // 清掉旧事件流,否则 SSE replay 会把上一轮的 error 再喷一遍
     db.delete(stageEvents).where(eq(stageEvents.taskId, row.id)).run();
-    runPipeline(row.id, row.documentId).catch((err: unknown) =>
-      log.error({ err, taskId: row.id }, 'retry pipeline crashed'),
-    );
+    // 清理中间产物,避免旧文件与新任务冲突
+    const dirs = [
+      paths.chunks(row.id),
+      path.join(paths.root, 'frames', row.id),
+      paths.exports(row.documentId),
+    ];
+    for (const dir of dirs) {
+      await fs.promises.rm(dir, { recursive: true, force: true }).catch((err: unknown) => {
+        log.warn({ err, dir }, 'failed to remove dir during task retry');
+      });
+    }
+    enqueuePipeline(row.id, row.documentId);
     return { ok: true, data: { taskId: row.id, documentId: row.documentId } };
   });
 
@@ -210,7 +239,15 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
       reply.raw.write(`:hb\n\n`);
     }, 30_000);
 
+    // SSE 连接超时：5 分钟无活动自动关闭，防止网络异常断开时连接泄漏
+    const timeout = setTimeout(() => {
+      clearInterval(heartbeat);
+      unsubscribe();
+      reply.raw.end();
+    }, 5 * 60 * 1000);
+
     req.raw.on('close', () => {
+      clearTimeout(timeout);
       clearInterval(heartbeat);
       unsubscribe();
     });

@@ -122,6 +122,12 @@ export interface HealthResponse {
   llm: 'ok' | 'no_key';
 }
 
+export const SANITIZE_OPTIONS = {
+  allowedTags: ['p', 'strong', 'em', 'code', 'a', 'br', 'span'],
+  allowedAttributes: { a: ['href', 'target', 'rel'] },
+  selfClosing: ['br'],
+};
+
 export interface SOPSpeaker {
   name: string;
   title: string;

@@ -41,9 +41,17 @@ export const documents = sqliteTable('documents', {
   createdAt: integer('created_at').notNull(),
 });
 
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
 export type TaskRow = typeof tasks.$inferSelect;
 export type TaskInsert = typeof tasks.$inferInsert;
 export type StageEventRow = typeof stageEvents.$inferSelect;
 export type StageEventInsert = typeof stageEvents.$inferInsert;
 export type DocumentRow = typeof documents.$inferSelect;
 export type DocumentInsert = typeof documents.$inferInsert;
+export type SettingRow = typeof settings.$inferSelect;
+export type SettingInsert = typeof settings.$inferInsert;

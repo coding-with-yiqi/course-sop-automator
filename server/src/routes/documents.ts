@@ -16,24 +16,19 @@ import type {
   SOPStep,
   SOPStepAsset,
 } from '@sop/shared';
+import { SANITIZE_OPTIONS } from '@sop/shared';
 import { db } from '../db/client.ts';
 import { documents, tasks } from '../db/schema.ts';
-import { paths } from '../util/paths.ts';
+import { paths, isSafePath } from '../util/paths.ts';
 import { log } from '../util/log.ts';
 import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.ts';
-import { dhash, hammingDistance } from '../ffmpeg/dedupe.ts';
-import { kimi, KIMI_MODEL } from '../llm/kimi.ts';
+import { dedupeCandidates } from '../ffmpeg/dedupe.ts';
+import { llmClient, KIMI_MODEL } from '../llm/client.ts';
 import { generateCourseSummary } from '../llm/summary.ts';
 import { renderDocumentHtml } from '../export/html.ts';
 import { parseSlides } from '../slides/parse.ts';
 import { batchOcr } from '../ocr/paddle.ts';
 import { analyzeCandidates } from '../llm/screenshot-analyze.ts';
-
-const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
-  allowedTags: ['p', 'strong', 'em', 'code', 'a', 'br', 'span'],
-  allowedAttributes: { a: ['href', 'target', 'rel'] },
-  selfClosing: ['br'],
-};
 
 const ASSET_PREVIEW_MAX = 2000;
 const ACCENT_CYCLE: readonly AccentColor[] = ['matcha', 'aqua', 'lavender', 'blush'];
@@ -445,7 +440,7 @@ ${assetBlock}
 输出 JSON。`;
 
     try {
-      const response = await kimi().chat.completions.create({
+      const response = await llmClient().chat.completions.create({
         model: KIMI_MODEL,
         temperature: 0.3,
         response_format: { type: 'json_object' },
@@ -519,34 +514,13 @@ ${assetBlock}
         .send({ ok: false, error: { code: 'FFMPEG_FAILED', message: '重抓帧失败' } });
     }
 
-    // 对候选帧做 dHash 去重：hamming distance ≤ 4 视为重复（比管道更严格）
-    const hashes = await Promise.all(
-      targets.map(async (t) => {
-        try {
-          return await dhash(t.outPath);
-        } catch {
-          return null;
-        }
-      }),
+    // 对候选帧做 dHash 去重
+    const { kept } = await dedupeCandidates(
+      targets.map((t, idx) => ({ path: t.outPath, meta: { url: `/files/${path.relative(paths.root, t.outPath)}`, timestamp: candidates[idx], idx } })),
+      { threshold: 4 },
     );
 
-    const keep = new Set<number>();
-    for (let i = 0; i < targets.length; i++) {
-      if (hashes[i] === null) continue;
-      let isDup = false;
-      for (let j = 0; j < i; j++) {
-        if (hashes[j] === null) continue;
-        if (hammingDistance(hashes[i]!, hashes[j]!) <= 4) {
-          isDup = true;
-          break;
-        }
-      }
-      if (!isDup) keep.add(i);
-    }
-
-    const deduped = targets
-      .map((t, idx) => ({ url: `/files/${path.relative(paths.root, t.outPath)}`, timestamp: candidates[idx], idx }))
-      .filter((_, idx) => keep.has(idx));
+    const deduped = kept.map((k) => k.meta as { url: string; timestamp: number; idx: number });
 
     log.info(
       { total: targets.length, kept: deduped.length, stepNumber, taskId: task.id },
@@ -603,33 +577,16 @@ ${assetBlock}
     }
 
     // dHash 去重
-    const hashes = await Promise.all(
-      targets.map(async (t) => {
-        try {
-          return await dhash(t.outPath);
-        } catch {
-          return null;
-        }
-      }),
+    const { kept } = await dedupeCandidates(
+      targets.map((t) => ({ path: t.outPath })),
+      { threshold: 4 },
     );
-
-    const keep = new Set<number>();
-    for (let i = 0; i < targets.length; i++) {
-      if (hashes[i] === null) continue;
-      let isDup = false;
-      for (let j = 0; j < i; j++) {
-        if (hashes[j] === null) continue;
-        if (hammingDistance(hashes[i]!, hashes[j]!) <= 4) {
-          isDup = true;
-          break;
-        }
-      }
-      if (!isDup) keep.add(i);
-    }
 
     // 把保留的帧全部追加为截图（复制到 selected-*.jpg）
     let added = 0;
-    for (const idx of keep) {
+    for (const item of kept) {
+      const idx = targets.findIndex((t) => t.outPath === item.path);
+      if (idx === -1) continue;
       const source = targets[idx].outPath;
       const dest = path.join(dir, `selected-${Date.now()}-${idx}.jpg`);
       try {
@@ -644,7 +601,7 @@ ${assetBlock}
 
     persistDocument(doc);
     log.info(
-      { total: targets.length, kept: keep.size, added, stepNumber, taskId: task.id },
+      { total: targets.length, kept: kept.length, added, stepNumber, taskId: task.id },
       'auto-capture completed',
     );
     return { ok: true, data: { step } };
@@ -667,7 +624,7 @@ ${assetBlock}
       .map((c) => {
         const rel = c.url.replace(/^\/files\//, '').split('?')[0];
         const abs = path.resolve(paths.root, rel);
-        return abs.startsWith(paths.root) ? abs : null;
+        return isSafePath(abs) ? abs : null;
       })
       .filter((p): p is string => p !== null);
 
@@ -745,7 +702,7 @@ ${assetBlock}
     }
     const sourceRel = req.body.url.replace(/^\/files\//, '');
     const sourceAbs = path.resolve(paths.root, sourceRel);
-    if (!sourceAbs.startsWith(paths.root)) {
+    if (!isSafePath(sourceAbs)) {
       return reply
         .status(400)
         .send({ ok: false, error: { code: 'BAD_PATH', message: '非法路径' } });

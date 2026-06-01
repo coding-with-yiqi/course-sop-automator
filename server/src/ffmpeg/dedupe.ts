@@ -79,3 +79,63 @@ export async function fileExists(p: string): Promise<boolean> {
     return false;
   }
 }
+
+export interface DedupeCandidate {
+  path: string;
+  meta?: Record<string, unknown>;
+}
+
+export interface DedupeResult<T> {
+  kept: T[];
+  dropped: T[];
+}
+
+/**
+ * Deduplicate a list of image candidates using dHash.
+ * Returns the kept items (first occurrence wins) and dropped items.
+ *
+ * @param candidates — items with a `path` field pointing to an image
+ * @param threshold — hamming distance ≤ threshold → considered duplicate (default 4)
+ * @returns { kept, dropped } — partitioned candidates
+ */
+export async function dedupeCandidates<T extends DedupeCandidate>(
+  candidates: T[],
+  { threshold = 4 }: { threshold?: number } = {},
+): Promise<DedupeResult<T>> {
+  const hashes = await Promise.all(
+    candidates.map(async (c) => {
+      try {
+        return await dhash(c.path);
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const kept: T[] = [];
+  const dropped: T[] = [];
+  const seenHashes: bigint[] = [];
+
+  for (let i = 0; i < candidates.length; i++) {
+    const h = hashes[i];
+    if (h === null) {
+      dropped.push(candidates[i]);
+      continue;
+    }
+    let isDup = false;
+    for (const seen of seenHashes) {
+      if (hammingDistance(h, seen) <= threshold) {
+        isDup = true;
+        break;
+      }
+    }
+    if (isDup) {
+      dropped.push(candidates[i]);
+    } else {
+      seenHashes.push(h);
+      kept.push(candidates[i]);
+    }
+  }
+
+  return { kept, dropped };
+}

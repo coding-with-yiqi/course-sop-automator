@@ -31,6 +31,7 @@ async function main(): Promise<void> {
     root: paths.root,
     prefix: '/files/',
     decorateReply: false,
+    wildcard: false,
   });
 
   registerHealthRoute(app);

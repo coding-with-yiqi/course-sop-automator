@@ -29,9 +29,7 @@ export function StepEditor({ step, onPatch, onOpenScreenshot, onDelete }: StepEd
 
   function handleDelete() {
     if (!onDelete) return;
-    if (window.confirm(`确认删除 步骤 ${step.stepNumber}「${step.title}」?后续步骤序号会顺延。`)) {
-      onDelete();
-    }
+    onDelete();
   }
 
   return (

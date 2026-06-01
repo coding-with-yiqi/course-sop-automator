@@ -14,7 +14,7 @@ import { segmentSubtitles, type Chunk } from '../subtitles/segment.ts';
 import { probeVideo } from '../ffmpeg/probe.ts';
 import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.ts';
 import { findDuplicates } from '../ffmpeg/dedupe.ts';
-import { kimi, KIMI_MODEL } from '../llm/kimi.ts';
+import { llmClient, KIMI_MODEL } from '../llm/client.ts';
 import { SYSTEM_PROMPT, buildUserPrompt } from '../llm/prompts.ts';
 import { LlmResponseSchema, type LlmStep } from '../llm/schema.ts';
 import { generateCourseSummary } from '../llm/summary.ts';
@@ -173,7 +173,7 @@ async function callKimi(
     const temperature = attempt === 0 ? 0.2 : 0;
     let content: string | null | undefined;
     try {
-      const response = await kimi().chat.completions.create({
+      const response = await llmClient().chat.completions.create({
         model: KIMI_MODEL,
         temperature,
         response_format: { type: 'json_object' },
