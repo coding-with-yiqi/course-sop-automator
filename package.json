@@ -2,6 +2,9 @@
   "name": "course-sop-automator",
   "private": true,
   "version": "0.1.0",
+  "description": "AI-powered video to SOP document pipeline",
+  "author": "Course SOP Team",
+  "main": "electron/dist/main.js",
   "type": "module",
   "workspaces": [
     "shared",
@@ -13,7 +16,7 @@
     "dev:server": "npm --workspace server run dev",
     "dev:web": "npm --workspace web run dev",
     "dev:electron": "NODE_ENV=development electron electron/dist/main.mjs",
-    "build": "npm --workspace shared run build && npm --workspace web run build && npm --workspace server run build",
+    "build": "npm --workspace web run build && npm --workspace server run build",
     "build:electron": "tsc -p electron/tsconfig.json",
     "dist": "npm run build && npm run build:electron && electron-builder",
     "dist:mac": "npm run build && npm run build:electron && electron-builder --mac",
@@ -50,8 +53,8 @@
     ],
     "extraResources": [
       {
-        "from": "server/node_modules/better-sqlite3",
-        "to": "app/server/node_modules/better-sqlite3"
+        "from": "node_modules/better-sqlite3",
+        "to": "app/node_modules/better-sqlite3"
       },
       {
         "from": "bin",
