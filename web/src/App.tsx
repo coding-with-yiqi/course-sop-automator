@@ -4,6 +4,7 @@ import { Dashboard } from '@/pages/Dashboard.tsx';
 import { Upload } from '@/pages/Upload.tsx';
 import { EditDocument } from '@/pages/EditDocument.tsx';
 import { ReportDocument } from '@/pages/ReportDocument.tsx';
+import { SettingsPage } from '@/pages/SettingsPage.tsx';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/upload" element={<Upload />} />
         <Route path="/documents/:id/edit" element={<EditDocument />} />
         <Route path="/documents/:id" element={<ReportDocument />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

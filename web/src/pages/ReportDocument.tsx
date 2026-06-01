@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, ChevronRight, Copy, Edit3, ExternalLink, FileCode2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, ChevronRight, Copy, Edit3, ExternalLink, FileCode2 } from 'lucide-react';
 import clsx from 'clsx';
 import type { SOPDocument, SOPStep } from '@sop/shared';
 import { useEditStore } from '@/stores/editStore.ts';
@@ -53,7 +53,8 @@ export function ReportDocument() {
   if (isLoading) return <div className="text-center text-mist py-20">加载文档中...</div>;
   if (loadError || !document) {
     return (
-      <div className="bg-error-container/40 border border-error/30 rounded-card p-6 text-on-error-container">
+      <div className="bg-error-container/40 border border-error/30 rounded-card p-6 text-on-error-container flex items-center gap-2">
+        <AlertCircle className="w-5 h-5 shrink-0" />
         {loadError ?? '文档不存在'}
       </div>
     );

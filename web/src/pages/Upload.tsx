@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Captions, CloudUpload, FileText, Layers, Sparkles, Video, X } from 'lucide-react';
+import { AlertCircle, Captions, CloudUpload, FileText, Layers, Sparkles, Video, X } from 'lucide-react';
 import clsx from 'clsx';
 import { GRANULARITY_OPTIONS, type Granularity } from '@sop/shared';
 import { api, ApiError } from '@/lib/api.ts';
@@ -95,7 +95,8 @@ export function Upload() {
       <GranularitySelector value={granularity} onChange={setGranularity} />
 
       {submitError && (
-        <div className="bg-error-container text-on-error-container px-4 py-3 rounded-card text-sm">
+        <div className="bg-error-container/40 border border-error/30 rounded-card text-on-error-container px-4 py-3 text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           {submitError}
         </div>
       )}
@@ -363,7 +364,8 @@ function PipelineView({
       </header>
 
       {streamError && (
-        <div className="bg-error-container text-on-error-container px-4 py-3 rounded-card text-sm">
+        <div className="bg-error-container/40 border border-error/30 rounded-card text-on-error-container px-4 py-3 text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           管线失败:{streamError.message}
         </div>
       )}

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, CloudUpload, Download, Inbox, RotateCw, Sparkles } from 'lucide-react';
+import { CheckCircle2, CloudUpload, Download, RotateCw, Sparkles, Wand2 } from 'lucide-react';
 import type { Task } from '@sop/shared';
 import { StatsCard } from '@/components/dashboard/StatsCard.tsx';
 import { TaskCard } from '@/components/dashboard/TaskCard.tsx';
 import { api, ApiError } from '@/lib/api.ts';
+import { ErrorBanner } from '@/components/ui/ErrorBanner.tsx';
 import type { DashboardTask } from '@/lib/mocks.ts';
 
 const STAGE_LABELS: Record<string, string> = {
@@ -193,11 +194,7 @@ export function Dashboard() {
       <section>
         <h3 className="text-title-sm font-bold text-forest mb-4">最近任务</h3>
 
-        {error && (
-          <div className="bg-error-container text-on-error-container px-4 py-3 rounded-card text-sm mb-4">
-            {error}
-          </div>
-        )}
+        {error && <ErrorBanner message={error} className="mb-4" />}
 
         {isLoading && tasks.length === 0 ? (
           <LoadingSkeleton />
@@ -236,21 +233,71 @@ function LoadingSkeleton() {
 
 function EmptyState() {
   return (
-    <div className="bg-surface-lowest border border-dashed border-border-subtle rounded-card p-12 flex flex-col items-center text-center gap-3">
-      <div className="w-16 h-16 rounded-full bg-matcha-container/30 flex items-center justify-center">
-        <Inbox className="w-7 h-7 text-matcha" />
+    <div className="flex flex-col gap-8">
+      {/* Hero CTA */}
+      <div className="bg-surface-lowest border border-dashed border-border-subtle rounded-card p-12 flex flex-col items-center text-center gap-4">
+        <div className="w-20 h-20 rounded-full bg-matcha-container/30 flex items-center justify-center">
+          <Sparkles className="w-9 h-9 text-matcha" />
+        </div>
+        <h4 className="text-headline-sm font-bold text-forest">准备好自动化了吗?</h4>
+        <p className="text-body-md text-mist font-light max-w-lg">
+          上传一个带字幕的课程视频,AI 会自动切片、抽取步骤、抓取关键帧,几分钟后生成图文教学文档。
+        </p>
+        <Link
+          to="/upload"
+          className="mt-2 inline-flex items-center gap-2 px-6 py-3 matcha-gradient text-white rounded-pill font-bold text-base shadow-card hover:shadow-card-hover transition-all hover:-translate-y-0.5"
+        >
+          <CloudUpload className="w-5 h-5" />
+          上传第一个视频
+        </Link>
       </div>
-      <h4 className="text-title-sm font-bold text-forest">还没有任务</h4>
-      <p className="text-body-sm text-mist font-light max-w-md">
-        上传一个带字幕的课程视频,AI 会自动切片、抽取步骤、抓取关键帧,几分钟后生成图文教学文档。
-      </p>
-      <Link
-        to="/upload"
-        className="mt-2 inline-flex items-center gap-2 px-5 py-2 matcha-gradient text-white rounded-pill font-bold text-sm shadow-card hover:shadow-card-hover transition-all hover:-translate-y-0.5"
-      >
-        <CloudUpload className="w-4 h-4" />
-        上传第一个视频
-      </Link>
+
+      {/* 3-step guide */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StepCard
+          step={1}
+          icon={CloudUpload}
+          title="上传素材"
+          description="选择视频 + 字幕文件(.srt/.vtt),可选上传 PPT 原稿辅助 AI 识别"
+        />
+        <StepCard
+          step={2}
+          icon={Wand2}
+          title="AI 自动处理"
+          description="语义切片、步骤抽取、关键帧抓取、代码块识别 — 全自动流水线"
+        />
+        <StepCard
+          step={3}
+          icon={CheckCircle2}
+          title="编辑导出"
+          description="微调步骤内容、管理截图、一键导出 HTML 或同步到 Notion/语雀"
+        />
+      </div>
+    </div>
+  );
+}
+
+function StepCard({
+  step,
+  icon: Icon,
+  title,
+  description,
+}: {
+  step: number;
+  icon: typeof CloudUpload;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="glass-panel rounded-card border border-border-subtle p-5 flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <span className="w-7 h-7 rounded-full bg-matcha-container/40 text-matcha text-xs font-bold flex items-center justify-center">
+          {step}
+        </span>
+        <Icon className="w-5 h-5 text-matcha" />
+      </div>
+      <h5 className="text-body-md font-bold text-forest">{title}</h5>
+      <p className="text-body-sm text-mist font-light leading-relaxed">{description}</p>
     </div>
   );
 }

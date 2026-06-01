@@ -15,7 +15,7 @@ const NAV = [
   { to: '/', label: '工作台', icon: LayoutDashboard, end: true, disabled: false },
   { to: '/upload', label: '上传任务', icon: CloudUpload, end: false, disabled: false },
   { to: '/templates', label: '模板库', icon: Library, end: false, disabled: true },
-  { to: '/settings', label: '设置', icon: Settings, end: false, disabled: true },
+  { to: '/settings', label: '设置', icon: Settings, end: false, disabled: false },
 ] as const;
 
 interface SidebarProps {

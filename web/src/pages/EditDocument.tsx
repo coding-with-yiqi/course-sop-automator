@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, EditIcon, RotateCw, Save, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowLeft, EditIcon, RotateCw, Save, Sparkles } from 'lucide-react';
 import type { SOPStep } from '@sop/shared';
 import { useEditStore } from '@/stores/editStore.ts';
 import { StepsTimeline } from '@/components/editor/StepsTimeline.tsx';
@@ -61,7 +61,9 @@ export function EditDocument() {
   }
   if (loadError || !document) {
     return (
-      <div className="bg-error-container/40 border border-error/30 rounded-card p-6 text-on-error-container">
+      <div className="bg-error-container/40 border border-error/30 rounded-card p-6 text-on-error-container flex items-center gap-2"
+      >
+        <AlertCircle className="w-5 h-5 shrink-0" />
         {loadError ?? '文档不存在'}
       </div>
     );
