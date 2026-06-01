@@ -8,6 +8,7 @@ import { detectFfmpeg, printInstallHelp } from './ffmpeg/detect.ts';
 import { registerHealthRoute } from './routes/health.ts';
 import { registerTaskRoutes } from './routes/tasks.ts';
 import { registerDocumentRoutes } from './routes/documents.ts';
+import { registerSettingsRoutes } from './routes/settings.ts';
 import { runMigrations } from './db/client.ts';
 import { paths, ensureDir } from './util/paths.ts';
 
@@ -35,6 +36,7 @@ async function main(): Promise<void> {
   });
 
   registerHealthRoute(app);
+  registerSettingsRoutes(app);
   await registerTaskRoutes(app);
   registerDocumentRoutes(app);
 

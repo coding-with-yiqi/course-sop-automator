@@ -812,6 +812,64 @@ ${assetBlock}
         .send({ ok: false, error: { code: 'EXPORT_FAILED', message: '导出失败' } });
     }
   });
+
+  // Notion 同步
+  app.post<{
+    Params: { id: string };
+    Body: { token: string; parentPageId: string };
+  }>('/api/documents/:id/sync/notion', async (req, reply) => {
+    const doc = loadDocument(req.params.id);
+    if (!doc) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '文档不存在' } });
+    }
+    const { token, parentPageId } = req.body;
+    if (!token || !parentPageId) {
+      return reply
+        .status(400)
+        .send({ ok: false, error: { code: 'BAD_REQUEST', message: '缺少 Notion token 或 parentPageId' } });
+    }
+    try {
+      const { syncToNotion } = await import('../sync/notion.ts');
+      const result = await syncToNotion(doc, { token, parentPageId });
+      return { ok: true, data: { url: result.pageUrl } };
+    } catch (err) {
+      log.error({ err }, 'sync to Notion failed');
+      return reply
+        .status(502)
+        .send({ ok: false, error: { code: 'SYNC_FAILED', message: err instanceof Error ? err.message : '同步到 Notion 失败' } });
+    }
+  });
+
+  // 语雀同步
+  app.post<{
+    Params: { id: string };
+    Body: { token: string; namespace: string };
+  }>('/api/documents/:id/sync/yuque', async (req, reply) => {
+    const doc = loadDocument(req.params.id);
+    if (!doc) {
+      return reply
+        .status(404)
+        .send({ ok: false, error: { code: 'NOT_FOUND', message: '文档不存在' } });
+    }
+    const { token, namespace } = req.body;
+    if (!token || !namespace) {
+      return reply
+        .status(400)
+        .send({ ok: false, error: { code: 'BAD_REQUEST', message: '缺少语雀 token 或 namespace' } });
+    }
+    try {
+      const { syncToYuque } = await import('../sync/yuque.ts');
+      const result = await syncToYuque(doc, { token, namespace });
+      return { ok: true, data: { url: result.docUrl } };
+    } catch (err) {
+      log.error({ err }, 'sync to Yuque failed');
+      return reply
+        .status(502)
+        .send({ ok: false, error: { code: 'SYNC_FAILED', message: err instanceof Error ? err.message : '同步到语雀失败' } });
+    }
+  });
 }
 
 function pickVideoFile(originalName: string): string {
