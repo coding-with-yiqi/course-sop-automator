@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hammingDistance, dedupeCandidates } from './dedupe.ts';
+import { hammingDistance, dedupeCandidates } from './dedupe.js';
 
 describe('hammingDistance', () => {
   it('returns 0 for identical hashes', () => {

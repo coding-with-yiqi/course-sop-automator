@@ -1,6 +1,6 @@
 import { app, dialog } from 'electron';
 import { autoUpdater } from 'electron-updater';
-import { log } from './log.ts';
+import { log } from './log.js';
 
 /**
  * Auto-updater setup for Course SOP Automator.

@@ -1,5 +1,5 @@
 import type { SOPStep } from '@sop/shared';
-import { llmClient, KIMI_MODEL } from './client.ts';
+import { llmClient, KIMI_MODEL } from './client.js';
 
 interface SummaryInput {
   title: string;

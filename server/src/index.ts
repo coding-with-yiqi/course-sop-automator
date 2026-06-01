@@ -2,15 +2,15 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import multipart from '@fastify/multipart';
-import { env } from './env.ts';
-import { log } from './util/log.ts';
-import { detectFfmpeg, printInstallHelp } from './ffmpeg/detect.ts';
-import { registerHealthRoute } from './routes/health.ts';
-import { registerTaskRoutes } from './routes/tasks.ts';
-import { registerDocumentRoutes } from './routes/documents.ts';
-import { registerSettingsRoutes } from './routes/settings.ts';
-import { runMigrations } from './db/client.ts';
-import { paths, ensureDir } from './util/paths.ts';
+import { env } from './env.js';
+import { log } from './util/log.js';
+import { detectFfmpeg, printInstallHelp } from './ffmpeg/detect.js';
+import { registerHealthRoute } from './routes/health.js';
+import { registerTaskRoutes } from './routes/tasks.js';
+import { registerDocumentRoutes } from './routes/documents.js';
+import { registerSettingsRoutes } from './routes/settings.js';
+import { runMigrations } from './db/client.js';
+import { paths, ensureDir } from './util/paths.js';
 
 async function main(): Promise<void> {
   const bins = await detectFfmpeg();

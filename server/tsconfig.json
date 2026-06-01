@@ -8,8 +8,9 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "outDir": "./dist",
     "lib": ["ES2022"],
     "types": ["node"]
   },

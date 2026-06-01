@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { HealthResponse } from '@sop/shared';
-import { detectFfmpeg } from '../ffmpeg/detect.ts';
-import { env } from '../env.ts';
+import { detectFfmpeg } from '../ffmpeg/detect.js';
+import { env } from '../env.js';
 
 export function registerHealthRoute(app: FastifyInstance): void {
   app.get('/api/health', async () => {

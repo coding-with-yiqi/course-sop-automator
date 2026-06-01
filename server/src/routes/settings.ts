@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { db, getSetting, setSetting } from '../db/client.ts';
-import { settings } from '../db/schema.ts';
-import { sql } from '../db/client.ts';
+import { db, getSetting, setSetting } from '../db/client.js';
+import { settings } from '../db/schema.js';
+import { sql } from '../db/client.js';
 
 const ALLOWED_KEYS = [
   'KIMI_API_KEY',

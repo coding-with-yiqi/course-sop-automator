@@ -1,5 +1,5 @@
 import { execa } from 'execa';
-import { getFfmpegPaths } from './detect.ts';
+import { getFfmpegPaths } from './detect.js';
 
 export interface ProbeResult {
   durationSec: number;

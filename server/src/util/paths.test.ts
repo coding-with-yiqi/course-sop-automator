@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
-import { paths, isSafePath } from './paths.ts';
+import { paths, isSafePath } from './paths.js';
 
 describe('isSafePath', () => {
   it('allows paths inside root', () => {

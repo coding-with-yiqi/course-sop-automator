@@ -1,4 +1,4 @@
-import type { Cue } from './parse.ts';
+import type { Cue } from './parse.js';
 
 export interface Chunk {
   index: number;

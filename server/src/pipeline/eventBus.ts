@@ -1,8 +1,8 @@
 import { EventEmitter } from 'node:events';
 import { eq, and, gt, asc } from 'drizzle-orm';
 import type { StageEvent, DoneEvent, ErrorEvent } from '@sop/shared';
-import { db } from '../db/client.ts';
-import { stageEvents } from '../db/schema.ts';
+import { db } from '../db/client.js';
+import { stageEvents } from '../db/schema.js';
 
 export type StreamEventName = 'stage' | 'log' | 'error' | 'done';
 export type StreamEventPayload = StageEvent | LogPayload | ErrorEvent | DoneEvent;

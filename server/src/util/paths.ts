@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { env } from '../env.ts';
+import { env } from '../env.js';
 
 const root = path.resolve(env.DATA_DIR);
 

@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import PizZip from 'pizzip';
-import { env } from '../env.ts';
-import { log } from '../util/log.ts';
+import { env } from '../env.js';
+import { log } from '../util/log.js';
 
 /**
  * 解析 PPT / PDF 原稿为统一的 Markdown 大纲,供 LLM 阶段拼到 user prompt。

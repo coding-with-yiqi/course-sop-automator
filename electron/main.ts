@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { setupAutoUpdater } from './auto-updater.ts';
+import { setupAutoUpdater } from './auto-updater.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +17,7 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 const serverEntry = isDev
   ? path.resolve(__dirname, '../server/src/index.ts')
-  : path.resolve(process.resourcesPath, 'server/dist/index.js');
+  : path.resolve(__dirname, '../server/dist/index.js');
 
 const preloadPath = path.resolve(__dirname, 'preload.mjs');
 

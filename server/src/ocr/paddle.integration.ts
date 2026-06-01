@@ -8,7 +8,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { env } from '../env.ts';
+import { env } from '../env.js';
 
 const TEST_IMAGE = process.argv[2] || 'data/frames/task_me9ftluwHkWc/18/selected.jpg';
 const POLL_INTERVAL = 3000;

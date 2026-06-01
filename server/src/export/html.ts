@@ -2,8 +2,8 @@ import Handlebars from 'handlebars';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { SOPDocument, SOPStep } from '@sop/shared';
-import { paths, isSafePath } from '../util/paths.ts';
-import { log } from '../util/log.ts';
+import { paths, isSafePath } from '../util/paths.js';
+import { log } from '../util/log.js';
 
 const ACCENT_HEX: Record<SOPStep['accentColor'], string> = {
   matcha: '#89D385',

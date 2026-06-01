@@ -1,4 +1,4 @@
-import type { Cue } from '../subtitles/parse.ts';
+import type { Cue } from '../subtitles/parse.js';
 import type { Granularity } from '@sop/shared';
 
 export const SYSTEM_PROMPT = `你是「教学视频 SOP 文档生成助手」。你的工作是把课程字幕重组为结构化、可复制、可执行的操作说明。

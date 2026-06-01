@@ -17,18 +17,18 @@ import type {
   SOPStepAsset,
 } from '@sop/shared';
 import { SANITIZE_OPTIONS } from '@sop/shared';
-import { db } from '../db/client.ts';
-import { documents, tasks } from '../db/schema.ts';
-import { paths, isSafePath } from '../util/paths.ts';
-import { log } from '../util/log.ts';
-import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.ts';
-import { dedupeCandidates } from '../ffmpeg/dedupe.ts';
-import { llmClient, KIMI_MODEL } from '../llm/client.ts';
-import { generateCourseSummary } from '../llm/summary.ts';
-import { renderDocumentHtml } from '../export/html.ts';
-import { parseSlides } from '../slides/parse.ts';
-import { batchOcr } from '../ocr/paddle.ts';
-import { analyzeCandidates } from '../llm/screenshot-analyze.ts';
+import { db } from '../db/client.js';
+import { documents, tasks } from '../db/schema.js';
+import { paths, isSafePath } from '../util/paths.js';
+import { log } from '../util/log.js';
+import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.js';
+import { dedupeCandidates } from '../ffmpeg/dedupe.js';
+import { llmClient, KIMI_MODEL } from '../llm/client.js';
+import { generateCourseSummary } from '../llm/summary.js';
+import { renderDocumentHtml } from '../export/html.js';
+import { parseSlides } from '../slides/parse.js';
+import { batchOcr } from '../ocr/paddle.js';
+import { analyzeCandidates } from '../llm/screenshot-analyze.js';
 
 const ASSET_PREVIEW_MAX = 2000;
 const ACCENT_CYCLE: readonly AccentColor[] = ['matcha', 'aqua', 'lavender', 'blush'];
@@ -831,7 +831,7 @@ ${assetBlock}
         .send({ ok: false, error: { code: 'BAD_REQUEST', message: '缺少 Notion token 或 parentPageId' } });
     }
     try {
-      const { syncToNotion } = await import('../sync/notion.ts');
+      const { syncToNotion } = await import('../sync/notion.js');
       const result = await syncToNotion(doc, { token, parentPageId });
       return { ok: true, data: { url: result.pageUrl } };
     } catch (err) {
@@ -860,7 +860,7 @@ ${assetBlock}
         .send({ ok: false, error: { code: 'BAD_REQUEST', message: '缺少语雀 token 或 namespace' } });
     }
     try {
-      const { syncToYuque } = await import('../sync/yuque.ts');
+      const { syncToYuque } = await import('../sync/yuque.js');
       const result = await syncToYuque(doc, { token, namespace });
       return { ok: true, data: { url: result.docUrl } };
     } catch (err) {

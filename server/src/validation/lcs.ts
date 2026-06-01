@@ -3,7 +3,7 @@
  * literal transcript of the subtitle. The contract: at most 3 sentences per
  * step may overlap with raw subtitle wording.
  */
-import type { Cue } from '../subtitles/parse.ts';
+import type { Cue } from '../subtitles/parse.js';
 
 export interface LeakHit {
   stepSentence: string;

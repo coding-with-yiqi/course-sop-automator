@@ -2,8 +2,8 @@ import { execa } from 'execa';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import pLimit from 'p-limit';
-import { log } from '../util/log.ts';
-import { getFfmpegPaths } from './detect.ts';
+import { log } from '../util/log.js';
+import { getFfmpegPaths } from './detect.js';
 
 const limit = pLimit(4);
 

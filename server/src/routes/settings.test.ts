@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
-import { registerSettingsRoutes } from './settings.ts';
-import { db } from '../db/client.ts';
-import { settings } from '../db/schema.ts';
+import { registerSettingsRoutes } from './settings.js';
+import { db } from '../db/client.js';
+import { settings } from '../db/schema.js';
 
 async function buildApp() {
   const app = Fastify();

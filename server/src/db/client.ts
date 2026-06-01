@@ -3,8 +3,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { sql } from 'drizzle-orm';
 import path from 'node:path';
 import fs from 'node:fs';
-import { env } from '../env.ts';
-import * as schema from './schema.ts';
+import { env } from '../env.js';
+import * as schema from './schema.js';
 
 const dbDir = path.resolve(env.DATA_DIR);
 fs.mkdirSync(dbDir, { recursive: true });

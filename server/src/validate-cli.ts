@@ -8,11 +8,11 @@
  */
 import { eq } from 'drizzle-orm';
 import path from 'node:path';
-import { db } from './db/client.ts';
-import { documents, tasks } from './db/schema.ts';
-import { paths } from './util/paths.ts';
-import { parseSubtitleFile } from './subtitles/parse.ts';
-import { checkStepLeaks } from './validation/lcs.ts';
+import { db } from './db/client.js';
+import { documents, tasks } from './db/schema.js';
+import { paths } from './util/paths.js';
+import { parseSubtitleFile } from './subtitles/parse.js';
+import { checkStepLeaks } from './validation/lcs.js';
 import type { SOPStep } from '@sop/shared';
 
 async function main(): Promise<void> {

@@ -1,5 +1,5 @@
-import { llmClient, KIMI_MODEL } from './client.ts';
-import { log } from '../util/log.ts';
+import { llmClient, KIMI_MODEL } from './client.js';
+import { log } from '../util/log.js';
 
 export interface ScreenshotAnalysis {
   summary: string;

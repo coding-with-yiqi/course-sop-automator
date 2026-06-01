@@ -1,5 +1,5 @@
 import { execa } from 'execa';
-import { log } from '../util/log.ts';
+import { log } from '../util/log.js';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 

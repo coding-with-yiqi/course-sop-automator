@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { env } from '../env.ts';
-import { log } from '../util/log.ts';
+import { env } from '../env.js';
+import { log } from '../util/log.js';
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_MS = 60_000;

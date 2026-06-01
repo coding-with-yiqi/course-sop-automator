@@ -4,12 +4,12 @@ import { nanoid } from 'nanoid';
 import path from 'node:path';
 import fs from 'node:fs';
 import { pipeline as streamPipeline } from 'node:stream/promises';
-import { db } from '../db/client.ts';
-import { tasks, documents, stageEvents } from '../db/schema.ts';
-import { paths, ensureDir } from '../util/paths.ts';
-import { runPipeline } from '../pipeline/orchestrator.ts';
-import { replay, subscribe, type PersistedStreamEvent } from '../pipeline/eventBus.ts';
-import { log } from '../util/log.ts';
+import { db } from '../db/client.js';
+import { tasks, documents, stageEvents } from '../db/schema.js';
+import { paths, ensureDir } from '../util/paths.js';
+import { runPipeline } from '../pipeline/orchestrator.js';
+import { replay, subscribe, type PersistedStreamEvent } from '../pipeline/eventBus.js';
+import { log } from '../util/log.js';
 import type { Granularity } from '@sop/shared';
 
 // 任务队列：限制同时运行的管线数量为 1，避免资源耗尽

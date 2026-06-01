@@ -1,5 +1,5 @@
 import type { SOPDocument, SOPStep } from '@sop/shared';
-import { log } from '../util/log.ts';
+import { log } from '../util/log.js';
 
 interface YuqueConfig {
   token: string;
