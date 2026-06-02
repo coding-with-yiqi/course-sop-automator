@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "AI-powered video to SOP document pipeline",
   "author": "Course SOP Team",
-  "main": "electron/dist/main.js",
+  "main": "electron/dist/bootstrap.cjs",
   "type": "module",
   "workspaces": [
     "shared",
@@ -15,9 +15,10 @@
     "dev": "concurrently -n server,web -c green,cyan \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm --workspace server run dev",
     "dev:web": "npm --workspace web run dev",
-    "dev:electron": "NODE_ENV=development electron electron/dist/main.mjs",
-    "build": "npm --workspace web run build && npm --workspace server run build",
-    "build:electron": "tsc -p electron/tsconfig.json",
+    "dev:electron": "NODE_ENV=development electron electron/dist/bootstrap.cjs",
+    "build:server": "npm --workspace shared run build && node scripts/build-server.js",
+    "build": "npm --workspace shared run build && npm --workspace web run build && npm run build:server",
+    "build:electron": "tsc -p electron/tsconfig.json && cp electron/bootstrap.cjs electron/dist/bootstrap.cjs",
     "dist": "npm run build && npm run build:electron && electron-builder",
     "dist:mac": "npm run build && npm run build:electron && electron-builder --mac",
     "dist:win": "npm run build && npm run build:electron && electron-builder --win",
@@ -28,11 +29,38 @@
     "test:e2e": "npm --workspace web run test:e2e",
     "test:coverage": "npm --workspace server run test:coverage && npm --workspace web run test:coverage"
   },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@fastify/multipart": "^8.3.1",
+    "@fastify/static": "^7.0.4",
+    "@img/sharp-darwin-arm64": "^0.34.5",
+    "@img/sharp-libvips-darwin-arm64": "^1.2.4",
+    "@notionhq/client": "^5.22.0",
+    "better-sqlite3": "^11.10.0",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.33.0",
+    "electron-updater": "^6.6.0",
+    "execa": "^9.5.1",
+    "fastify": "^4.28.1",
+    "form-data": "^4.0.5",
+    "handlebars": "^4.7.9",
+    "nanoid": "^5.1.11",
+    "openai": "^4.104.0",
+    "p-limit": "^5.0.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^11.3.0",
+    "pizzip": "^3.2.0",
+    "sanitize-html": "^2.17.4",
+    "sharp": "^0.33.5",
+    "subtitle": "^4.2.2",
+    "zod": "^3.23.8"
+  },
   "devDependencies": {
     "concurrently": "^9.0.1",
     "electron": "^34.0.0",
     "electron-builder": "^26.0.0",
-    "electron-updater": "^6.6.0"
+    "electron-rebuild": "^3.2.9",
+    "esbuild": "^0.28.0"
   },
   "engines": {
     "node": ">=20"
@@ -45,28 +73,57 @@
     },
     "files": [
       "electron/dist/**/*",
-      "server/dist/**/*",
+      "server/dist/index.js",
       "web/dist/**/*",
-      "shared/dist/**/*",
-      "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*",
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*",
+      "node_modules/color/**/*",
+      "node_modules/color-convert/**/*",
+      "node_modules/color-name/**/*",
+      "node_modules/color-string/**/*",
+      "node_modules/is-arrayish/**/*",
+      "node_modules/simple-swizzle/**/*",
+      "node_modules/semver/**/*",
+      "node_modules/detect-libc/**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "server/dist/**/*",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*",
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*",
+      "node_modules/color/**/*",
+      "node_modules/color-convert/**/*",
+      "node_modules/color-name/**/*",
+      "node_modules/color-string/**/*",
+      "node_modules/is-arrayish/**/*",
+      "node_modules/simple-swizzle/**/*",
+      "node_modules/semver/**/*",
+      "node_modules/detect-libc/**/*"
     ],
     "extraResources": [
       {
-        "from": "node_modules/better-sqlite3",
-        "to": "app/node_modules/better-sqlite3"
-      },
-      {
         "from": "bin",
         "to": "bin",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "category": "public.app-category.productivity"
@@ -75,7 +132,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },

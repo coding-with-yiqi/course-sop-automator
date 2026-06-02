@@ -11,6 +11,13 @@ data/
 .vite/
 *.tsbuildinfo
 
+# Electron packaging output + bundled FFmpeg binaries (downloaded per-platform)
+release/
+bin/
+
+# Codex session continuity
+.context/
+
 # OS
 .DS_Store
 Thumbs.db

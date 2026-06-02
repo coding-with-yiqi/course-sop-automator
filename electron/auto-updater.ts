@@ -1,6 +1,10 @@
 import { app, dialog } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import path from 'node:path';
+import { existsSync } from 'node:fs';
+import pkg from 'electron-updater';
 import { log } from './log.js';
+
+const { autoUpdater } = pkg;
 
 /**
  * Auto-updater setup for Course SOP Automator.
@@ -20,6 +24,15 @@ export function setupAutoUpdater(): void {
 
   if (!app.isPackaged) {
     log.info('Auto-updater skipped (dev mode)');
+    return;
+  }
+
+  // electron-builder writes app-update.yml only when `publish` is configured.
+  // Without it, checkForUpdates throws ENOENT. Skip quietly so a build with no
+  // release server still launches cleanly.
+  const updateConfig = path.join(process.resourcesPath, 'app-update.yml');
+  if (!existsSync(updateConfig)) {
+    log.info('Auto-updater skipped (no publish config / app-update.yml)');
     return;
   }
 
