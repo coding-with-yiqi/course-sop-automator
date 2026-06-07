@@ -4,7 +4,7 @@ import { AlertCircle, ArrowLeft, CheckCircle2, ChevronRight, Copy, Edit3, Extern
 import clsx from 'clsx';
 import type { SOPDocument, SOPStep } from '@sop/shared';
 import { useEditStore } from '@/stores/editStore.ts';
-import { api } from '@/lib/api.ts';
+import { api, fileUrl } from '@/lib/api.ts';
 import { SpeakerCard } from '@/components/sop/SpeakerCard.tsx';
 import { CodeViewer } from '@/components/editor/CodeViewer.tsx';
 
@@ -166,7 +166,7 @@ function StepView({ step }: { step: SOPStep }) {
           {step.screenshots.map((ss, i) => (
             <div key={`${ss.url}-${i}`} className="flex justify-center">
               <div className="rounded-card overflow-hidden border border-border-subtle shadow-card max-w-full">
-                <img src={ss.url} alt={ss.alt} className="max-h-[400px] w-auto block" />
+                <img src={fileUrl(ss.url)} alt={ss.alt} className="max-h-[400px] w-auto block" />
               </div>
             </div>
           ))}
@@ -194,9 +194,11 @@ function ExportPanel({ documentId }: { documentId: string }) {
     setError(null);
     try {
       const result = await api.exportHtml(documentId);
-      // Trigger browser download via temporary <a>.
+      // Trigger browser download via temporary <a>. Resolve to an absolute URL
+      // so it works under app:// (packaged) where a bare "/api/..." would point
+      // at the filesystem root instead of the local server.
       const a = window.document.createElement('a');
-      a.href = result.downloadUrl;
+      a.href = fileUrl(result.downloadUrl);
       a.download = result.fileName;
       window.document.body.appendChild(a);
       a.click();

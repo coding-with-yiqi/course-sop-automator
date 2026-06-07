@@ -1,11 +1,16 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
 import path from 'node:path';
 import http from 'node:http';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { setupAutoUpdater } from './auto-updater.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// NOTE: protocol.registerSchemesAsPrivileged for the `app://` scheme runs in
+// bootstrap.cjs BEFORE this module is dynamically imported — it must happen
+// before app `ready`, which the async import() here can't guarantee. We only
+// register the protocol *handler* (protocol.handle) below, inside whenReady.
 
 // ─── Paths ───────────────────────────────────────────────────────────
 
@@ -28,9 +33,10 @@ const serverEntry = isDev
 // tsc emits preload.js (not .mjs). Must match the build output exactly.
 const preloadPath = path.resolve(__dirname, 'preload.js');
 
-const webUrl = isDev
-  ? 'http://localhost:5173'
-  : `file://${path.resolve(__dirname, '../../web/dist/index.html')}`;
+const webUrl = isDev ? 'http://localhost:5173' : 'app://renderer/index.html';
+
+// Filesystem root the app:// handler serves from (the built web assets).
+const webRoot = path.resolve(__dirname, '../../web/dist');
 
 // ─── Server child process ────────────────────────────────────────────
 
@@ -56,6 +62,11 @@ function startServer(): void {
       DATA_DIR: path.join(app.getPath('userData'), 'data'),
       PORT: String(SERVER_PORT),
       ELECTRON_MODE: 'true',
+      // The spawned server is a plain Node child — it has no process.resourcesPath.
+      // Pass it through so the server can locate the bundled ffmpeg/ffprobe under
+      // resources/bin/. Without this the server falls back to PATH and crashes on
+      // machines that don't have ffmpeg installed globally (i.e. real users).
+      ELECTRON_RESOURCES_PATH: process.resourcesPath,
     },
     stdio: 'pipe',
     detached: false,
@@ -141,6 +152,11 @@ function createWindow(): void {
     },
   });
 
+  // Surface renderer load failures to the main-process log instead of failing
+  // silently to a blank window.
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    console.error(`[electron] did-fail-load code=${code} desc=${desc} url=${url}`);
+  });
   mainWindow.loadURL(webUrl);
 
   if (isDev) {
@@ -155,6 +171,22 @@ function createWindow(): void {
 // ─── App lifecycle ───────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
+  // Serve the built renderer over app://. Map app://renderer/<path> to a file
+  // under web/dist. SPA deep links use HashRouter, so non-asset paths still
+  // resolve to a real file here; no index.html fallback is needed.
+  if (!isDev) {
+    protocol.handle('app', (request) => {
+      const { pathname } = new URL(request.url);
+      const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+      const filePath = path.join(webRoot, rel);
+      // Guard against path traversal escaping webRoot.
+      if (!filePath.startsWith(webRoot)) {
+        return new Response('Forbidden', { status: 403 });
+      }
+      return net.fetch(pathToFileURL(filePath).toString());
+    });
+  }
+
   // Only auto-start the built-in server in production.
   // In dev the user runs `npm run dev:server` separately.
   if (!isDev) {

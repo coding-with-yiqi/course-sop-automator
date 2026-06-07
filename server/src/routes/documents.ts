@@ -813,6 +813,36 @@ ${assetBlock}
     }
   });
 
+  // Download an exported HTML file. Dedicated route (not /files/ static) so that
+  // Chinese file names work: @fastify/static 404s on URL-encoded non-ASCII paths.
+  app.get<{ Params: { id: string }; Querystring: { name?: string } }>(
+    '/api/documents/:id/export/download',
+    async (req, reply) => {
+      const name = req.query.name;
+      // Reject any path separators / traversal — only a bare file name is valid.
+      if (!name || name.includes('/') || name.includes('\\') || name.includes('..')) {
+        return reply
+          .status(400)
+          .send({ ok: false, error: { code: 'BAD_REQUEST', message: '文件名无效' } });
+      }
+      const filePath = path.join(paths.exports(req.params.id), name);
+      try {
+        const buf = await fs.readFile(filePath);
+        reply
+          .header('Content-Type', 'text/html; charset=utf-8')
+          .header(
+            'Content-Disposition',
+            `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+          );
+        return reply.send(buf);
+      } catch {
+        return reply
+          .status(404)
+          .send({ ok: false, error: { code: 'NOT_FOUND', message: '导出文件不存在' } });
+      }
+    },
+  );
+
   // Notion 同步
   app.post<{
     Params: { id: string };

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FileText, ImageIcon, Paperclip, RotateCw, Sparkles, Trash2, Upload as UploadIcon } from 'lucide-react';
 import clsx from 'clsx';
 import type { SOPAiSettings, SOPStep, SOPStepAsset } from '@sop/shared';
-import { api } from '@/lib/api.ts';
+import { api, fileUrl } from '@/lib/api.ts';
 
 const LEVEL_LABELS: Record<1 | 2 | 3, string> = {
   1: '简洁',
@@ -264,7 +264,7 @@ function AssetRow({
       <FileText className="w-4 h-4 text-mist shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
         <a
-          href={asset.url}
+          href={fileUrl(asset.url)}
           target="_blank"
           rel="noreferrer"
           className="block text-body-sm text-on-surface hover:text-matcha truncate"

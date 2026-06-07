@@ -19,17 +19,30 @@ class ApiError extends Error {
 }
 
 /**
- * In Electron production builds the frontend is served from file:// and
- * there is no Vite dev-server proxy.  We detect that case and prepend the
- * local server origin (the main process starts the server on a known port).
+ * In Electron production builds the frontend is served from a custom app://
+ * protocol (or file:// in older builds) and there is no Vite dev-server proxy.
+ * We detect that case and prepend the local server origin (the main process
+ * starts the server on a known port).
  */
 const API_BASE =
-  typeof window !== 'undefined' && window.location.protocol === 'file:'
+  typeof window !== 'undefined' && /^(file|app):$/.test(window.location.protocol)
     ? 'http://127.0.0.1:4000'
     : '';
 
 function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
+}
+
+/**
+ * Resolve a server-relative file URL (e.g. "/files/uploads/...") to an
+ * absolute URL. Under file:// (Electron) a bare "/files/..." would resolve
+ * against the filesystem root and fail, so we prepend the server origin.
+ * Pass-through for already-absolute (http/blob/data) URLs.
+ */
+export function fileUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (/^(https?:|blob:|data:)/.test(url)) return url;
+  return `${API_BASE}${url}`;
 }
 
 async function unwrap<T>(res: Response): Promise<T> {

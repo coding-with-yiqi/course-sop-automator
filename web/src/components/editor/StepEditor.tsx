@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Copy, Quote, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import type { SOPStep } from '@sop/shared';
+import { fileUrl } from '@/lib/api.ts';
 import { RichTextEditor } from './RichTextEditor.tsx';
 import { CodeEditor } from './CodeEditor.tsx';
 
@@ -161,7 +162,7 @@ function ScreenshotArea({
         <div key={ss.url} className="flex justify-center">
           <img
             alt={ss.alt}
-            src={ss.url}
+            src={fileUrl(ss.url)}
             className="rounded-input shadow-card max-h-[260px] w-auto border border-border-subtle object-cover"
             title={`截图 ${i + 1}/${count}`}
           />

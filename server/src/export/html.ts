@@ -309,11 +309,14 @@ export async function renderDocumentHtml(doc: SOPDocument): Promise<RenderResult
   const filePath = path.join(outDir, fileName);
   await fs.writeFile(filePath, html, 'utf8');
 
-  const rel = path.relative(paths.root, filePath);
+  // Serve via a dedicated download route rather than /files/ static: the latter
+  // (@fastify/static, wildcard:false) 404s on URL-encoded non-ASCII (Chinese)
+  // file names. The download route streams by docId + encoded name and sets a
+  // Content-Disposition so the browser keeps the friendly Chinese file name.
   return {
     filePath,
     fileName,
-    downloadUrl: `/files/${rel}`,
+    downloadUrl: `/api/documents/${doc.id}/export/download?name=${encodeURIComponent(fileName)}`,
   };
 }
 

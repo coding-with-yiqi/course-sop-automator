@@ -11,6 +11,10 @@ data/
 .vite/
 *.tsbuildinfo
 
+# Playwright e2e artifacts
+test-results/
+playwright-report/
+
 # Electron packaging output + bundled FFmpeg binaries (downloaded per-platform)
 release/
 bin/

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { GripVertical, X } from 'lucide-react';
+import { fileUrl } from '@/lib/api.ts';
 
 const STORAGE_KEY = 'floating-video-player';
 
@@ -157,7 +158,7 @@ export function FloatingVideoPlayer({
       </header>
       <video
         ref={videoRef}
-        src={videoUrl}
+        src={fileUrl(videoUrl)}
         controls
         preload="metadata"
         className="w-full bg-black aspect-video"

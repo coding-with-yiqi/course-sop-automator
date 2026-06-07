@@ -5,6 +5,15 @@
 // The crash log lands in the app's userData dir (writable in a packaged .app),
 // not cwd which may be read-only.
 
+// CRITICAL: some host environments (VSCode / Trae / Electron-based IDEs) export
+// ELECTRON_RUN_AS_NODE=1 into the shell. Inherited by our app, it makes Electron
+// run as plain Node — no GUI, no `app` lifecycle — so the process runs this entry
+// script and exits 0 with no window. Strip it (and friends) before anything else.
+// main.ts re-sets ELECTRON_RUN_AS_NODE=1 explicitly on the server child's env, so
+// removing it from this process does not affect the spawned server.
+delete process.env.ELECTRON_RUN_AS_NODE;
+delete process.env.ELECTRON_FORCE_IS_PACKAGED;
+
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -35,6 +44,29 @@ function log(err) {
 
 process.on('uncaughtException', log);
 process.on('unhandledRejection', log);
+
+// Register the privileged app:// scheme synchronously, BEFORE the dynamic
+// import below. registerSchemesAsPrivileged must run before app `ready`, and
+// the dynamic import() of main.js is async — by the time main.js evaluates,
+// Electron may already be ready, so registering there throws. Doing it here in
+// CJS guarantees it runs first. (`require('electron')` is reliable at this
+// point; only the very-early logging above avoids it.)
+try {
+  const { protocol } = require('electron');
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: 'app',
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: true,
+      },
+    },
+  ]);
+} catch (err) {
+  log(err);
+}
 
 // Load the real ESM main process. Any import-time error is caught + logged.
 import(path.join(__dirname, 'main.js')).catch(log);

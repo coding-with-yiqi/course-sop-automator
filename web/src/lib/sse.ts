@@ -21,10 +21,11 @@ function initialStages(): Record<StageKey, StageEvent> {
 
 /**
  * Same logic as api.ts: in Electron production builds the page is served
- * from file:// so we need an absolute origin for the EventSource.
+ * from app:// (or file:// in older builds) so we need an absolute origin
+ * for the EventSource.
  */
 const SSE_BASE =
-  typeof window !== 'undefined' && window.location.protocol === 'file:'
+  typeof window !== 'undefined' && /^(file|app):$/.test(window.location.protocol)
     ? 'http://127.0.0.1:4000'
     : '';
 

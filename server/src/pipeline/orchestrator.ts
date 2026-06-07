@@ -164,6 +164,7 @@ async function callKimi(
     granularity,
   });
 
+  let lastError: Error | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     // 指数退避：0s, 2s, 4s, 8s, 16s
     if (attempt > 0) {
@@ -185,6 +186,7 @@ async function callKimi(
       content = response.choices[0]?.message?.content;
       if (!content) {
         log.warn({ attempt }, 'Kimi returned empty content');
+        lastError = new Error('Kimi 返回了空内容');
         continue;
       }
       const parsed = JSON.parse(content);
@@ -195,22 +197,35 @@ async function callKimi(
         codeBlock: step.codeBlock ? sanitizeCodeBlock(step.codeBlock) : null,
       }));
     } catch (err) {
+      lastError = err as Error;
+      // API-level errors (auth / quota) carry an HTTP status. Retrying a 401/403
+      // is pointless and masks the real cause behind a generic "JSON 校验失败".
+      // Surface those immediately; only retry on transient (429 / 5xx) or on
+      // JSON/schema mismatch (no status).
+      const status = (err as { status?: number }).status;
+      if (status === 401 || status === 403) {
+        throw new Error(
+          `Kimi 认证失败(HTTP ${status}):API Key 无效或已过期,请在 .env 更新 KIMI_API_KEY`,
+        );
+      }
       const issues = err instanceof Error && 'issues' in err
         ? (err as { issues: unknown }).issues
         : undefined;
       log.warn(
         {
           attempt,
+          status,
           err: (err as Error).message,
           issues,
           contentPreview: content?.slice(0, 500),
           contentLength: content?.length,
         },
-        'LLM response invalid',
+        'LLM call failed',
       );
     }
   }
-  throw new Error('Kimi 返回的 JSON 多次校验失败');
+  // Exhausted retries: report the actual last failure, not a blanket message.
+  throw new Error(`Kimi 调用多次失败:${lastError?.message ?? '未知错误'}`);
 }
 
 async function stageLlm(

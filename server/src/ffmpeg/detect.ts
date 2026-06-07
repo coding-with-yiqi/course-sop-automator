@@ -16,11 +16,16 @@ function getBundledBinDir(): string | null {
     return null;
   }
   // In a packaged Electron app process.resourcesPath points to
-  // Contents/Resources (macOS) or resources (Win/Linux).
+  // Contents/Resources (macOS) or resources (Win/Linux). BUT the server runs as
+  // a spawned plain-Node child, which has no process.resourcesPath — the main
+  // process passes it via ELECTRON_RESOURCES_PATH. Prefer the env, fall back to
+  // process.resourcesPath (for the rare in-process case).
   const platform = process.platform;
   const arch = process.arch;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resourcesPath = (process as any).resourcesPath as string | undefined;
+  const resourcesPath =
+    process.env.ELECTRON_RESOURCES_PATH ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((process as any).resourcesPath as string | undefined);
   if (!resourcesPath) return null;
   const bundled = path.join(
     resourcesPath,

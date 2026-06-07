@@ -212,11 +212,21 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
       ? Number(lastEventIdHeader[0])
       : Number(lastEventIdHeader ?? 0);
 
+    // This route writes the raw response, bypassing the @fastify/cors hook, so
+    // we must set CORS headers by hand. Without them the packaged renderer (an
+    // app:// origin talking cross-origin to http://127.0.0.1) has its
+    // EventSource blocked by the browser — the SSE shows "已断开" and stage
+    // progress never updates even though the pipeline is running.
+    const origin = req.headers.origin;
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      // Mirror @fastify/cors { origin: true }: echo the caller's origin.
+      'Access-Control-Allow-Origin': origin ?? '*',
+      'Access-Control-Allow-Credentials': 'true',
+      Vary: 'Origin',
     });
 
     const writeEvent = (event: PersistedStreamEvent): void => {

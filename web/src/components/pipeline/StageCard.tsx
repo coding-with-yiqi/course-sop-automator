@@ -25,6 +25,11 @@ export function StageCard({ meta, event, fileName, onCancel }: StageCardProps) {
   const isSucceeded = status === 'succeeded';
   const isFailed = status === 'failed';
   const isQueued = status === 'queued';
+  // The LLM stage's progress is coarse (updated only once per subtitle chunk, of
+  // which there may be only 1-2) and each chunk is a multi-minute Kimi call, so a
+  // percentage bar would sit frozen at 0%/50%. Show an indeterminate animation
+  // instead so the user can see it's working.
+  const isIndeterminate = isRunning && meta.key === 'llm';
 
   return (
     <div
@@ -47,9 +52,12 @@ export function StageCard({ meta, event, fileName, onCancel }: StageCardProps) {
           >
             {meta.key === 'ingest' && fileName ? fileName : meta.label}
           </h4>
-          <StatusBadge status={status} progress={event.progress} />
+          <StatusBadge status={status} progress={event.progress} indeterminate={isIndeterminate} />
         </div>
-        {isRunning && typeof event.progress === 'number' && (
+        {isIndeterminate && (
+          <div className="progress-indeterminate w-full bg-surface-low rounded-full h-1.5 mb-2" />
+        )}
+        {isRunning && !isIndeterminate && typeof event.progress === 'number' && (
           <div className="w-full bg-surface-low rounded-full h-1.5 overflow-hidden mb-2">
             <div
               className="bg-gradient-to-r from-matcha-container to-aqua-container h-1.5 rounded-full transition-[width] duration-300"
@@ -113,10 +121,15 @@ function IconBubble({ Icon, status }: { Icon: LucideIcon; status: StageEvent['st
 function StatusBadge({
   status,
   progress,
+  indeterminate,
 }: {
   status: StageEvent['status'];
   progress?: number;
+  indeterminate?: boolean;
 }) {
+  if (status === 'running' && indeterminate) {
+    return <span className="text-xs font-bold text-matcha shrink-0">处理中…</span>;
+  }
   if (status === 'running' && typeof progress === 'number') {
     return <span className="text-xs font-bold text-matcha shrink-0">{Math.round(progress * 100)}%</span>;
   }

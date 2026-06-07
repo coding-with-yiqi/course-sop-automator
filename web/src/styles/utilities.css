@@ -39,6 +39,35 @@
   }
 }
 
+/* Indeterminate progress bar — for stages (e.g. LLM) whose true progress can't
+   be known, so a fixed-width bar would just sit still and look stuck. A slim
+   segment slides across to signal "working" without claiming a percentage. */
+.progress-indeterminate {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-indeterminate::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  border-radius: 9999px;
+  background: linear-gradient(to right, #89d385, #6fd4f3);
+  animation: indeterminate-slide 1.4s infinite ease-in-out;
+}
+
+@keyframes indeterminate-slide {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
 .gradient-stripe {
   background: linear-gradient(to right, #89d385, #efccea);
   height: 6px;
