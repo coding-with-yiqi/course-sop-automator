@@ -176,7 +176,22 @@ app.whenReady().then(async () => {
   // resolve to a real file here; no index.html fallback is needed.
   if (!isDev) {
     protocol.handle('app', (request) => {
-      const { pathname } = new URL(request.url);
+      const { pathname, search } = new URL(request.url);
+      // Server-backed paths (API + uploaded/generated files) are transparently
+      // proxied to the local server. This means any relative "/files/..." or
+      // "/api/..." in the renderer just works under app://, without every
+      // <img>/fetch having to wrap the URL — the root cause of recurring broken
+      // images. (Explicit absolute http://127.0.0.1 URLs still work too.)
+      if (pathname.startsWith('/files/') || pathname.startsWith('/api/')) {
+        return net.fetch(`http://127.0.0.1:${SERVER_PORT}${pathname}${search}`, {
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+          // @ts-expect-error duplex is required by Node fetch when streaming a body
+          duplex: 'half',
+        });
+      }
+      // Everything else is a built renderer asset under web/dist.
       const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
       const filePath = path.join(webRoot, rel);
       // Guard against path traversal escaping webRoot.
