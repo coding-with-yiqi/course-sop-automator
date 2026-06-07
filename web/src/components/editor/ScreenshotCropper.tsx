@@ -3,7 +3,7 @@ import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import { Crop as CropIcon, ImageIcon, Upload, X, ChevronDown, Trash2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import clsx from 'clsx';
 import type { SOPStep, SOPScreenshot } from '@sop/shared';
-import { api, type ScreenshotCandidate, type CandidateAnalysis } from '@/lib/api.ts';
+import { api, fileUrl, type ScreenshotCandidate, type CandidateAnalysis } from '@/lib/api.ts';
 
 const WINDOW_OPTIONS = [
   { value: 5, label: '5秒' },
@@ -214,7 +214,7 @@ export function ScreenshotCropper({
                 {list.map((ss, i) => (
                   <div key={`${ss.url}-${i}`} className="relative group/slide">
                     <img
-                      src={ss.url}
+                      src={fileUrl(ss.url)}
                       alt={ss.alt}
                       className="h-20 w-auto rounded-input border border-border-subtle object-cover"
                     />
@@ -364,7 +364,7 @@ export function ScreenshotCropper({
                       )}
                     >
                       <div className="aspect-video relative">
-                        <img src={c.url} alt={`候选 ${c.timestamp}`} className="w-full h-full object-cover" />
+                        <img src={fileUrl(c.url)} alt={`候选 ${c.timestamp}`} className="w-full h-full object-cover" />
                         {isRecommended && (
                           <span className="absolute top-1.5 right-1.5 bg-matcha text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                             推荐
@@ -408,10 +408,10 @@ export function ScreenshotCropper({
             {activeUrl ? (
               mode === 'crop' ? (
                 <ReactCrop crop={crop} onChange={(c) => setCrop(c)} onComplete={(c) => setCompletedCrop(c)}>
-                  <img ref={imgRef} src={activeUrl} alt="待裁剪" className="max-w-full max-h-[50vh]" />
+                  <img ref={imgRef} src={fileUrl(activeUrl)} alt="待裁剪" crossOrigin="anonymous" className="max-w-full max-h-[50vh]" />
                 </ReactCrop>
               ) : (
-                <img src={activeUrl} alt="当前选中" className="max-w-full max-h-[50vh] rounded-input" />
+                <img src={fileUrl(activeUrl)} alt="当前选中" className="max-w-full max-h-[50vh] rounded-input" />
               )
             ) : (
               <p className="text-mist text-sm">点「重新扫描候选」或「上传图片」预览新图，然后追加到步骤中。</p>
