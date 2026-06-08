@@ -33,6 +33,16 @@ async function main(): Promise<void> {
     prefix: '/files/',
     decorateReply: false,
     wildcard: false,
+    // <img>/<video> load cross-origin in no-cors mode and DON'T send an Origin
+    // header, so @fastify/cors (which echoes Origin) never adds Access-Control-
+    // Allow-Origin to these responses. Without it, the packaged app:// renderer
+    // gets every /files image blocked by Chromium ORB (net::ERR_BLOCKED_BY_ORB)
+    // — broken images. These are local, credential-free public assets, so an
+    // unconditional ACAO:* plus CORP:cross-origin is safe and what ORB wants.
+    setHeaders: (res) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
   });
 
   registerHealthRoute(app);

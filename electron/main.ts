@@ -38,6 +38,14 @@ const webUrl = isDev ? 'http://localhost:5173' : 'app://renderer/index.html';
 // Filesystem root the app:// handler serves from (the built web assets).
 const webRoot = path.resolve(__dirname, '../../web/dist');
 
+// Data dir for uploaded/generated files (must match DATA_DIR passed to the
+// spawned server below). app:// serves /files/* directly from here so images
+// load as same-origin app:// resources — no cross-origin http://127.0.0.1, no
+// Chromium ORB blocking. Lazily resolved (app.getPath needs app ready).
+function dataRoot(): string {
+  return path.join(app.getPath('userData'), 'data');
+}
+
 // ─── Server child process ────────────────────────────────────────────
 
 let serverProcess: ReturnType<typeof spawn> | null = null;
@@ -177,12 +185,22 @@ app.whenReady().then(async () => {
   if (!isDev) {
     protocol.handle('app', (request) => {
       const { pathname, search } = new URL(request.url);
-      // Server-backed paths (API + uploaded/generated files) are transparently
-      // proxied to the local server. This means any relative "/files/..." or
-      // "/api/..." in the renderer just works under app://, without every
-      // <img>/fetch having to wrap the URL — the root cause of recurring broken
-      // images. (Explicit absolute http://127.0.0.1 URLs still work too.)
-      if (pathname.startsWith('/files/') || pathname.startsWith('/api/')) {
+      // /files/* — serve uploaded/generated files DIRECTLY from disk over app://
+      // (same-origin). Going through http://127.0.0.1 made <img> loads cross-
+      // origin, which Chromium ORB blocks (ERR_BLOCKED_BY_ORB → broken images),
+      // and no amount of CORS/CORP headers reliably satisfied ORB. Reading the
+      // file as an app:// resource sidesteps the whole cross-origin question.
+      if (pathname.startsWith('/files/')) {
+        const rel = decodeURIComponent(pathname.slice('/files/'.length));
+        const fp = path.join(dataRoot(), rel);
+        if (!fp.startsWith(dataRoot())) {
+          return new Response('Forbidden', { status: 403 });
+        }
+        return net.fetch(pathToFileURL(fp).toString());
+      }
+      // /api/* — proxy to the local server (these are fetch() calls; CORS is
+      // already configured, and they don't hit ORB the way <img> does).
+      if (pathname.startsWith('/api/')) {
         return net.fetch(`http://127.0.0.1:${SERVER_PORT}${pathname}${search}`, {
           method: request.method,
           headers: request.headers,

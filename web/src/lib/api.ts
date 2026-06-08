@@ -33,15 +33,26 @@ function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
 
+const IS_APP_PROTOCOL =
+  typeof window !== 'undefined' && window.location.protocol === 'app:';
+
 /**
- * Resolve a server-relative file URL (e.g. "/files/uploads/...") to an
- * absolute URL. Under file:// (Electron) a bare "/files/..." would resolve
- * against the filesystem root and fail, so we prepend the server origin.
- * Pass-through for already-absolute (http/blob/data) URLs.
+ * Resolve a server-relative file URL (e.g. "/files/uploads/...") for use as an
+ * <img>/<video> src.
+ *
+ * Under the packaged app:// build we DELIBERATELY keep it relative so the
+ * browser loads it as a same-origin app:// resource (the main process serves
+ * /files/* straight from disk). Routing images through http://127.0.0.1 instead
+ * makes them cross-origin, which Chromium ORB blocks (ERR_BLOCKED_BY_ORB →
+ * broken images) regardless of CORS/CORP headers.
+ *
+ * Under the legacy file:// build there's no protocol handler, so we still need
+ * the absolute server origin. Pass-through for already-absolute URLs.
  */
 export function fileUrl(url: string | null | undefined): string {
   if (!url) return '';
   if (/^(https?:|blob:|data:)/.test(url)) return url;
+  if (IS_APP_PROTOCOL) return url; // same-origin app:// — handled by main process
   return `${API_BASE}${url}`;
 }
 
