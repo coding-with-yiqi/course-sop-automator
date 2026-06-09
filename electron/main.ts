@@ -1,9 +1,12 @@
 import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
 import path from 'node:path';
 import http from 'node:http';
+import fs from 'node:fs';
+import { Readable } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { setupAutoUpdater } from './auto-updater.js';
+import { mimeFor, planRange } from './file-range.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,8 +33,11 @@ const serverEntry = isDev
   ? path.resolve(__dirname, '../../server/src/index.ts')
   : path.resolve(__dirname, '../../server/dist/index.js').replace('app.asar', 'app.asar.unpacked');
 
-// tsc emits preload.js (not .mjs). Must match the build output exactly.
-const preloadPath = path.resolve(__dirname, 'preload.js');
+// preload.cts compiles to preload.cjs (CommonJS). Electron loads preload
+// scripts as CommonJS — an ESM preload.js (the old name under "type":"module")
+// throws "Cannot use import statement outside a module" and the preload never
+// runs. Must match the build output exactly.
+const preloadPath = path.resolve(__dirname, 'preload.cjs');
 
 const webUrl = isDev ? 'http://localhost:5173' : 'app://renderer/index.html';
 
@@ -44,6 +50,40 @@ const webRoot = path.resolve(__dirname, '../../web/dist');
 // Chromium ORB blocking. Lazily resolved (app.getPath needs app ready).
 function dataRoot(): string {
   return path.join(app.getPath('userData'), 'data');
+}
+
+/**
+ * Serve a file from disk over app:// with HTTP Range support.
+ *
+ * Images load fine as one buffered blob, but <video> needs partial content:
+ * the element issues `Range: bytes=...` to read metadata and to seek. Without a
+ * 206 + Content-Range response it can't determine duration (seekable.end()===0)
+ * and the floating player fails to load — Electron's net.fetch(file://) doesn't
+ * reliably honor Range here (electron#38749), so we handle it ourselves.
+ *
+ * The byte-window/header math lives in ./file-range (planRange) so it can be
+ * unit tested without importing electron; this function just does the fs/stream
+ * wiring around it.
+ */
+function serveFileWithRange(fp: string, rangeHeader: string | null): Response {
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(fp);
+  } catch {
+    return new Response('Not Found', { status: 404 });
+  }
+  const plan = planRange(stat.size, mimeFor(fp), rangeHeader);
+  if (plan.status === 416) {
+    return new Response('Range Not Satisfiable', { status: 416, headers: plan.headers });
+  }
+  const stream =
+    plan.status === 206
+      ? fs.createReadStream(fp, { start: plan.start, end: plan.end })
+      : fs.createReadStream(fp);
+  return new Response(Readable.toWeb(stream) as unknown as ReadableStream, {
+    status: plan.status,
+    headers: plan.headers,
+  });
 }
 
 // ─── Server child process ────────────────────────────────────────────
@@ -196,7 +236,8 @@ app.whenReady().then(async () => {
         if (!fp.startsWith(dataRoot())) {
           return new Response('Forbidden', { status: 403 });
         }
-        return net.fetch(pathToFileURL(fp).toString());
+        // Serve from disk with Range support so <video> can load + seek.
+        return serveFileWithRange(fp, request.headers.get('range'));
       }
       // /api/* — proxy to the local server (these are fetch() calls; CORS is
       // already configured, and they don't hit ORB the way <img> does).

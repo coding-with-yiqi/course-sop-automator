@@ -13,6 +13,6 @@
     "sourceMap": true,
     "types": ["node"]
   },
-  "include": ["main.ts", "preload.ts", "auto-updater.ts", "log.ts"],
+  "include": ["main.ts", "preload.cts", "auto-updater.ts", "log.ts", "file-range.ts"],
   "exclude": ["node_modules", "dist"]
 }

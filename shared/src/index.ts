@@ -155,6 +155,18 @@ export interface SOPStepAsset {
 
 export type AccentColor = 'matcha' | 'aqua' | 'lavender' | 'blush';
 
+/** 导出 HTML 的视觉主题。仅影响 CSS，不改变 HTML 结构/语义，故不影响知识库检索。 */
+export type ThemeKey = 'matcha' | 'minimal' | 'terminal' | 'notion' | 'magazine';
+
+/** 主题清单元数据（给前端选择器用）。CSS 本体只在 server/src/export/themes.ts。 */
+export const THEME_LIST: { key: ThemeKey; name: string; blurb: string }[] = [
+  { key: 'matcha', name: '抹茶', blurb: '默认 · 与应用一致的抹茶绿' },
+  { key: 'minimal', name: '极简黑白', blurb: '高对比无色 · 适合打印' },
+  { key: 'terminal', name: '技术深色', blurb: '深色代码块为主角 · 适合开发文档' },
+  { key: 'notion', name: 'Notion 类', blurb: '米白灰蓝 · 适合归档' },
+  { key: 'magazine', name: '杂志排版', blurb: '大标题强排版 · 适合分享' },
+];
+
 export interface SOPStep {
   stepNumber: number;
   title: string;

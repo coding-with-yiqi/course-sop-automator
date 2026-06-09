@@ -1,5 +1,54 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { api, ApiError } from './api.ts';
+
+// fileUrl + API_BASE are computed from window.location.protocol at module load,
+// so we re-import the module fresh under each simulated protocol.
+async function loadApiUnder(protocol: string) {
+  vi.resetModules();
+  vi.stubGlobal('window', {
+    location: { protocol },
+    localStorage: { getItem: () => null, setItem: () => {} },
+  });
+  return import('./api.ts');
+}
+
+describe('fileUrl (ORB same-origin fix regression guard)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('under app:// returns the path UNCHANGED so images/video are same-origin', async () => {
+    // The ORB bug: routing /files through http://127.0.0.1 made <img>/<video>
+    // cross-origin → Chromium ERR_BLOCKED_BY_ORB. Same-origin app:// fixes it.
+    const { fileUrl } = await loadApiUnder('app:');
+    expect(fileUrl('/files/uploads/x/video.mp4')).toBe('/files/uploads/x/video.mp4');
+    expect(fileUrl('/files/a.png')).toBe('/files/a.png');
+  });
+
+  it('under file:// (legacy build) prefixes the local server origin', async () => {
+    const { fileUrl } = await loadApiUnder('file:');
+    expect(fileUrl('/files/a.png')).toBe('http://127.0.0.1:4000/files/a.png');
+  });
+
+  it('under http:// (dev) returns the relative path (vite proxy)', async () => {
+    const { fileUrl } = await loadApiUnder('http:');
+    expect(fileUrl('/files/a.png')).toBe('/files/a.png');
+  });
+
+  it('passes through absolute/blob/data URLs untouched in every mode', async () => {
+    for (const proto of ['app:', 'file:', 'http:']) {
+      const { fileUrl } = await loadApiUnder(proto);
+      expect(fileUrl('https://cdn/x.png')).toBe('https://cdn/x.png');
+      expect(fileUrl('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
+      expect(fileUrl('blob:abc')).toBe('blob:abc');
+    }
+  });
+
+  it('returns empty string for null/undefined/empty', async () => {
+    const { fileUrl } = await loadApiUnder('app:');
+    expect(fileUrl(null)).toBe('');
+    expect(fileUrl(undefined)).toBe('');
+    expect(fileUrl('')).toBe('');
+  });
+});
 
 describe('api', () => {
   describe('health', () => {

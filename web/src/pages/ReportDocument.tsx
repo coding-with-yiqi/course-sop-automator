@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, CheckCircle2, ChevronRight, Copy, Edit3, ExternalLink, FileCode2 } from 'lucide-react';
 import clsx from 'clsx';
-import type { SOPDocument, SOPStep } from '@sop/shared';
+import type { SOPDocument, SOPStep, ThemeKey } from '@sop/shared';
+import { THEME_LIST } from '@sop/shared';
 import { useEditStore } from '@/stores/editStore.ts';
 import { api, fileUrl } from '@/lib/api.ts';
 import { SpeakerCard } from '@/components/sop/SpeakerCard.tsx';
@@ -181,19 +182,34 @@ function StepView({ step }: { step: SOPStep }) {
   );
 }
 
+const THEME_STORAGE_KEY = 'export-theme';
+
+function loadTheme(): ThemeKey {
+  if (typeof window === 'undefined') return 'matcha';
+  const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return THEME_LIST.some((t) => t.key === saved) ? (saved as ThemeKey) : 'matcha';
+}
+
 function ExportPanel({ documentId }: { documentId: string }) {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [syncStates, setSyncStates] = useState<Record<string, SyncState>>({});
+  // Theme choice persists — a lecturer usually sticks with one style.
+  const [theme, setTheme] = useState<ThemeKey>(() => loadTheme());
 
   const docText = useDocumentAsText();
+
+  function pickTheme(key: ThemeKey) {
+    setTheme(key);
+    window.localStorage.setItem(THEME_STORAGE_KEY, key);
+  }
 
   async function handleDownload() {
     setExporting(true);
     setError(null);
     try {
-      const result = await api.exportHtml(documentId);
+      const result = await api.exportHtml(documentId, theme);
       // Trigger browser download via temporary <a>. Resolve to an absolute URL
       // so it works under app:// (packaged) where a bare "/api/..." would point
       // at the filesystem root instead of the local server.
@@ -332,6 +348,41 @@ function ExportPanel({ documentId }: { documentId: string }) {
       <h2 className="text-title-sm font-bold text-forest mb-4 flex items-center gap-2">
         <ExternalLink className="w-5 h-5 text-matcha" /> 导出选项
       </h2>
+
+      {/* HTML 导出主题选择器。主题只改 CSS、不影响知识库检索。 */}
+      <div className="mb-4">
+        <p className="text-body-sm font-bold text-sage mb-2">导出主题</p>
+        <div className="grid grid-cols-2 gap-2">
+          {THEME_LIST.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => pickTheme(t.key)}
+              className={clsx(
+                'text-left p-2.5 rounded-input border transition-colors',
+                theme === t.key
+                  ? 'border-matcha bg-surface-bright'
+                  : 'border-border-subtle bg-surface-lowest hover:border-matcha/50',
+              )}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-body-sm font-bold text-on-surface">{t.name}</span>
+                {t.key === 'matcha' && (
+                  <span className="text-[10px] font-bold text-matcha bg-matcha-container/40 px-1.5 py-0.5 rounded-pill">
+                    推荐
+                  </span>
+                )}
+                {theme === t.key && <CheckCircle2 className="w-3.5 h-3.5 text-matcha ml-auto" />}
+              </div>
+              <p className="text-[11px] text-mist mt-1 leading-snug">{t.blurb}</p>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-mist mt-1.5">
+          主题仅改变视觉,不影响内容结构与知识库检索。
+        </p>
+      </div>
+
       <div className="space-y-2">
         <button
           type="button"

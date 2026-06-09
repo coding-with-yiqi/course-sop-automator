@@ -61,6 +61,11 @@ try {
         secure: true,
         supportFetchAPI: true,
         corsEnabled: true,
+        // <video>/<audio> expect the protocol to stream + honor Range requests.
+        // Without `stream: true` the element treats the response as a single
+        // buffered blob: seeking breaks (video.seekable.end()===0) and the
+        // floating player fails to load metadata. See electron#38749.
+        stream: true,
       },
     },
   ]);

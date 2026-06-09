@@ -1,9 +1,10 @@
 import Handlebars from 'handlebars';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { SOPDocument, SOPStep } from '@sop/shared';
+import type { SOPDocument, SOPStep, ThemeKey } from '@sop/shared';
 import { paths, isSafePath } from '../util/paths.js';
 import { log } from '../util/log.js';
+import { THEMES, DEFAULT_THEME, resolveTheme } from './themes.js';
 
 const ACCENT_HEX: Record<SOPStep['accentColor'], string> = {
   matcha: '#89D385',
@@ -30,167 +31,7 @@ const TEMPLATE_SOURCE = `<!doctype html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{{title}}</title>
-<style>
-  :root {
-    --matcha: #256c2b;
-    --matcha-container: #89d385;
-    --canvas: #f6fcf4;
-    --forest: #1a4d17;
-    --sage: #3d5c3a;
-    --mist: #6b7c65;
-    --border: #e2efe0;
-    --surface: #ffffff;
-    --surface-bright: #ecffe3;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: var(--canvas);
-    color: var(--forest);
-    line-height: 1.7;
-    font-weight: 300;
-  }
-  .stripe { height: 6px; background: linear-gradient(to right, #89d385, #efccea); }
-  .container { max-width: 880px; margin: 0 auto; padding: 48px 32px; }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: var(--surface-bright);
-    border-radius: 999px;
-    color: var(--matcha);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-  h1.title {
-    font-size: 34px;
-    font-weight: 700;
-    color: var(--forest);
-    line-height: 1.4;
-    letter-spacing: 0.03em;
-    margin: 0 0 24px;
-  }
-  .speaker {
-    display: inline-flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-  }
-  .speaker img {
-    width: 56px;
-    height: 56px;
-    border-radius: 999px;
-    object-fit: cover;
-  }
-  .speaker .name { font-size: 16px; font-weight: 700; color: var(--forest); }
-  .speaker .title { font-size: 13px; color: var(--mist); margin-top: 2px; }
-  .doc-header { padding-bottom: 32px; margin-bottom: 40px; border-bottom: 1px solid var(--border); }
-  .summary {
-    margin-top: 24px;
-    padding: 18px 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--matcha-container);
-    border-radius: 12px;
-  }
-  .summary-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--matcha);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-  .summary p { margin: 0; color: var(--forest); font-size: 14.5px; line-height: 1.85; }
-
-  .step {
-    position: relative;
-    padding-left: 24px;
-    margin-bottom: 40px;
-  }
-  .step::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    border-radius: 999px;
-    background: var(--accent, var(--matcha-container));
-  }
-  .step h3 {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--forest);
-    margin: 0 0 8px;
-  }
-  .step .ts {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 8px;
-    background: var(--surface-bright);
-    color: var(--matcha);
-    border-radius: 8px;
-    font-size: 11px;
-    font-family: "SF Mono", Menlo, monospace;
-    font-weight: 700;
-  }
-  .step .desc { color: var(--sage); margin: 0 0 16px; font-size: 14px; }
-  .step .body { color: var(--forest); margin: 0 0 16px; font-size: 15.5px; line-height: 1.85; }
-  .step .body code {
-    background: var(--surface-bright);
-    color: var(--matcha);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: "SF Mono", Menlo, monospace;
-  }
-  .screenshots { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 16px 0; }
-  .screenshot {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(26, 77, 23, 0.06);
-  }
-  .screenshot img { width: 100%; display: block; }
-
-  pre.code {
-    background: #1a3217;
-    color: #ddf9d3;
-    border-radius: 12px;
-    padding: 16px;
-    overflow-x: auto;
-    font-family: "SF Mono", Menlo, monospace;
-    font-size: 13.5px;
-    line-height: 1.7;
-    border: 1px solid #304d2d;
-  }
-  pre.code .filename {
-    display: block;
-    font-size: 11px;
-    color: #a0b39e;
-    margin-bottom: 8px;
-    font-weight: 700;
-  }
-  pre.code code { color: inherit; background: transparent; padding: 0; }
-
-  footer {
-    margin-top: 64px;
-    padding-top: 24px;
-    border-top: 6px solid var(--matcha);
-    color: var(--mist);
-    font-size: 12px;
-    text-align: center;
-  }
-</style>
+<style>{{{themeCss}}}</style>
 </head>
 <body>
 <div class="stripe"></div>
@@ -273,7 +114,11 @@ export interface RenderResult {
   downloadUrl: string;
 }
 
-export async function renderDocumentHtml(doc: SOPDocument): Promise<RenderResult> {
+export async function renderDocumentHtml(
+  doc: SOPDocument,
+  theme?: ThemeKey | string | null,
+): Promise<RenderResult> {
+  const themeKey = resolveTheme(theme); // invalid/missing → DEFAULT_THEME
   // Inline every screenshot and speaker avatar to data URLs so the HTML
   // is self-contained (knowledge-base ingestion friendly, single file).
   const steps = await Promise.all(
@@ -301,11 +146,15 @@ export async function renderDocumentHtml(doc: SOPDocument): Promise<RenderResult
     speaker,
     steps,
     year: new Date().getFullYear(),
+    themeCss: THEMES[themeKey].css,
   });
 
   const outDir = paths.exports(doc.id);
   await fs.mkdir(outDir, { recursive: true });
-  const fileName = `${slugify(doc.title)}-${Date.now()}.html`;
+  // Include the theme in the file name so exporting multiple themes of the same
+  // doc doesn't clobber, and the user can tell them apart.
+  const themePart = themeKey === DEFAULT_THEME ? '' : `-${themeKey}`;
+  const fileName = `${slugify(doc.title)}${themePart}-${Date.now()}.html`;
   const filePath = path.join(outDir, fileName);
   await fs.writeFile(filePath, html, 'utf8');
 

@@ -789,7 +789,9 @@ ${assetBlock}
     return { ok: true, data: { step } };
   });
 
-  app.post<{ Params: { id: string } }>('/api/documents/:id/export/html', async (req, reply) => {
+  app.post<{ Params: { id: string }; Body: { theme?: string } }>(
+    '/api/documents/:id/export/html',
+    async (req, reply) => {
     const doc = loadDocument(req.params.id);
     if (!doc) {
       return reply
@@ -797,7 +799,7 @@ ${assetBlock}
         .send({ ok: false, error: { code: 'NOT_FOUND', message: '文档不存在' } });
     }
     try {
-      const result = await renderDocumentHtml(doc);
+      const result = await renderDocumentHtml(doc, req.body?.theme);
       return {
         ok: true,
         data: {

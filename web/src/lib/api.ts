@@ -9,6 +9,7 @@ import type {
   SOPStepAsset,
   SOPSpeaker,
   SOPAiSettings,
+  ThemeKey,
 } from '@sop/shared';
 
 class ApiError extends Error {
@@ -256,10 +257,15 @@ export const api = {
     return data.step;
   },
 
-  async exportHtml(docId: string): Promise<{ downloadUrl: string; fileName: string }> {
+  async exportHtml(
+    docId: string,
+    theme?: ThemeKey,
+  ): Promise<{ downloadUrl: string; fileName: string }> {
     return unwrap<{ downloadUrl: string; fileName: string }>(
       await fetch(apiUrl(`/api/documents/${docId}/export/html`), {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(theme ? { theme } : {}),
       }),
     );
   },
