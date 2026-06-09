@@ -14,11 +14,14 @@ import { segmentSubtitles, type Chunk } from '../subtitles/segment.js';
 import { probeVideo } from '../ffmpeg/probe.js';
 import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.js';
 import { findDuplicates } from '../ffmpeg/dedupe.js';
+import { getWhisperCliPath } from '../ffmpeg/detect.js';
 import { llmClient, KIMI_MODEL } from '../llm/client.js';
 import { SYSTEM_PROMPT, buildUserPrompt } from '../llm/prompts.js';
 import { LlmResponseSchema, type LlmStep } from '../llm/schema.js';
 import { generateCourseSummary } from '../llm/summary.js';
 import { parseSlides } from '../slides/parse.js';
+import { transcribeVideo, TranscribeError } from '../whisper/transcribe.js';
+import { isModelReady, downloadModel } from '../whisper/model.js';
 
 interface RunContext {
   taskId: string;
@@ -88,11 +91,54 @@ async function stageIngest(
   const { durationSec } = await probeVideo(ctx.videoPath);
   reportProgress(ctx.taskId, 'ingest', { progress: 0.4, message: `视频时长 ${Math.round(durationSec)}s` });
 
-  if (!ctx.subtitlePath) {
-    throw new Error('MVP 当前要求传入字幕文件(.srt / .vtt)');
+  let cues: Cue[];
+  if (ctx.subtitlePath) {
+    cues = await parseSubtitleFile(ctx.subtitlePath);
+    reportProgress(ctx.taskId, 'ingest', { progress: 0.7, message: `字幕 cues: ${cues.length}` });
+  } else {
+    // No subtitle uploaded — transcribe from audio using bundled whisper.cpp.
+    const whisperCli = getWhisperCliPath();
+    if (!whisperCli) {
+      throw new Error(
+        '未上传字幕,且当前环境不支持自动转录(仅打包版 App 可用)。' +
+          '请上传 .srt/.vtt/.txt 字幕,或使用剪映/飞书妙记等工具导出字幕后再上传。',
+      );
+    }
+    const modelsDir = paths.models();
+    if (!isModelReady(modelsDir)) {
+      reportProgress(ctx.taskId, 'ingest', {
+        progress: 0.45,
+        message: '下载语音模型中(约 190MB,只需一次)...',
+      });
+      await downloadModel(modelsDir, (p) =>
+        reportProgress(ctx.taskId, 'ingest', {
+          progress: 0.45 + p.percent * 0.15,
+          message: `下载语音模型 ${p.percent}%`,
+        }),
+      );
+    }
+    reportProgress(ctx.taskId, 'ingest', { progress: 0.6, message: '语音转录中...' });
+    cues = await transcribeVideo({
+      videoPath: ctx.videoPath,
+      modelPath: paths.models() + '/ggml-small-q5_1.bin',
+      whisperCliPath: whisperCli,
+      language: 'zh',
+      onProgress: (pct) =>
+        reportProgress(ctx.taskId, 'ingest', {
+          progress: 0.6 + pct * 0.1,
+          message: `语音转录 ${pct}%`,
+        }),
+      onMessage: (msg) =>
+        reportProgress(ctx.taskId, 'ingest', {
+          progress: 0.6,
+          message: msg,
+        }),
+    });
+    reportProgress(ctx.taskId, 'ingest', {
+      progress: 0.7,
+      message: `自动转录 cues: ${cues.length}`,
+    });
   }
-  const cues = await parseSubtitleFile(ctx.subtitlePath);
-  reportProgress(ctx.taskId, 'ingest', { progress: 0.7, message: `字幕 cues: ${cues.length}` });
 
   let slidesMarkdown: string | null = null;
   if (ctx.slidesPath) {

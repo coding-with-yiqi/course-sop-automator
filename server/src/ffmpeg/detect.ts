@@ -62,6 +62,19 @@ export function getFfmpegPaths(): { ffmpeg: string; ffprobe: string } {
   return { ffmpeg: 'ffmpeg', ffprobe: 'ffprobe' };
 }
 
+/**
+ * Path to the bundled whisper-cli (same resources/bin/<platform>-<arch> dir as
+ * ffmpeg). Returns null when not packaged / not present — transcription is an
+ * Electron-only feature; in dev there is no bundled engine.
+ */
+export function getWhisperCliPath(): string | null {
+  const bundledDir = getBundledBinDir();
+  if (!bundledDir) return null;
+  const exe = process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli';
+  const p = path.join(bundledDir, exe);
+  return existsSync(p) ? p : null;
+}
+
 export function printInstallHelp(): void {
   const platform = process.platform;
   const lines: string[] = [

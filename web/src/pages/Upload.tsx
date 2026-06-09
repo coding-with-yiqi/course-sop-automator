@@ -8,7 +8,7 @@ import { useTaskStream } from '@/lib/sse.ts';
 import { StageList } from '@/components/pipeline/StageList.tsx';
 
 const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv';
-const SUBTITLE_ACCEPT = '.srt,.vtt';
+const SUBTITLE_ACCEPT = '.srt,.vtt,.txt';
 const SLIDES_ACCEPT = '.pptx,.pdf';
 
 function formatBytes(bytes: number): string {
@@ -31,6 +31,7 @@ export function Upload() {
   const [submitting, setSubmitting] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(initialTaskId);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showTranscribeHint, setShowTranscribeHint] = useState(false);
 
   const { stages, documentId, error: streamError, connectionState } = useTaskStream(taskId);
 
@@ -54,11 +55,11 @@ export function Upload() {
     );
   }
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doCreateTask = async () => {
     if (!video) return;
     setSubmitting(true);
     setSubmitError(null);
+    setShowTranscribeHint(false);
     try {
       const res = await api.createTask({
         title: title.trim() || video.name,
@@ -73,6 +74,17 @@ export function Upload() {
       setSubmitError(message);
       setSubmitting(false);
     }
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!video) return;
+    if (!subtitle && !showTranscribeHint) {
+      // First click without subtitle: show the hint instead of submitting.
+      setShowTranscribeHint(true);
+      return;
+    }
+    await doCreateTask();
   };
 
   return (
@@ -98,6 +110,37 @@ export function Upload() {
         <div className="bg-error-container/40 border border-error/30 rounded-card text-on-error-container px-4 py-3 text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {submitError}
+        </div>
+      )}
+
+      {showTranscribeHint && !subtitle && (
+        <div className="bg-lavender-container/30 border border-lavender/30 rounded-card px-5 py-4 text-sm">
+          <p className="font-bold text-forest mb-2">这个视频没有字幕</p>
+          <p className="text-mist mb-3 leading-relaxed">
+            有两种方式继续:
+            <br />
+            1. <strong>自动转录</strong> — 下载语音模型(约 190MB,只需一次),60 分钟视频约需 9 分钟,质量略低于人工字幕
+            <br />
+            2. <strong>自己导出字幕再上传</strong> — 更快更准。可用剪映、飞书妙记、通义听悟、网易见外等工具导出 .srt / .vtt / .txt
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => doCreateTask()}
+              disabled={submitting}
+              className="matcha-gradient text-white px-4 py-2 rounded-pill font-bold text-sm shadow-card inline-flex items-center gap-1.5"
+            >
+              <Sparkles className="w-4 h-4" />
+              {submitting ? '处理中...' : '自动转录并继续'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTranscribeHint(false)}
+              className="px-4 py-2 rounded-pill font-bold text-sm text-forest border border-border-subtle hover:bg-surface-lowest"
+            >
+              取消,去上传字幕
+            </button>
+          </div>
         </div>
       )}
 
@@ -171,10 +214,27 @@ function VideoDropzone({ file, onFile }: { file: File | null; onFile: (f: File |
 
 function SubtitleSlot({ file, onFile }: { file: File | null; onFile: (f: File | null) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
   return (
     <div
       onClick={() => inputRef.current?.click()}
-      className="rounded-card border border-dashed border-border-subtle bg-surface-lowest p-5 cursor-pointer hover:border-matcha-container transition-colors"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) onFile(f);
+      }}
+      className={clsx(
+        'rounded-card border border-dashed p-5 cursor-pointer transition-colors',
+        dragOver
+          ? 'border-matcha bg-matcha-container/20'
+          : 'border-border-subtle bg-surface-lowest hover:border-matcha-container',
+      )}
     >
       <input
         ref={inputRef}
@@ -190,7 +250,7 @@ function SubtitleSlot({ file, onFile }: { file: File | null; onFile: (f: File | 
           <Captions className="w-5 h-5" />
           <div>
             <p className="text-body-md font-bold text-forest">上传字幕(可选)</p>
-            <p className="text-body-sm font-light">支持 .srt / .vtt</p>
+            <p className="text-body-sm font-light">支持 .srt / .vtt / .txt · 无字幕将自动转录</p>
           </div>
         </div>
       )}
@@ -200,10 +260,27 @@ function SubtitleSlot({ file, onFile }: { file: File | null; onFile: (f: File | 
 
 function SlidesSlot({ file, onFile }: { file: File | null; onFile: (f: File | null) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
   return (
     <div
       onClick={() => inputRef.current?.click()}
-      className="rounded-card border border-dashed border-border-subtle bg-surface-lowest p-5 cursor-pointer hover:border-matcha-container transition-colors"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) onFile(f);
+      }}
+      className={clsx(
+        'rounded-card border border-dashed p-5 cursor-pointer transition-colors',
+        dragOver
+          ? 'border-matcha bg-matcha-container/20'
+          : 'border-border-subtle bg-surface-lowest hover:border-matcha-container',
+      )}
     >
       <input
         ref={inputRef}

@@ -71,8 +71,8 @@ describe.skipIf(!hasDist)('compiled electron artifacts', () => {
   it('dist/bootstrap.cjs carries stream: true', () => {
     expect(read('electron/dist/bootstrap.cjs')).toMatch(/stream:\s*true/);
   });
-  it('main.js contains the Range response logic', () => {
-    const js = read('electron/dist/main.js');
+  it('file-range.js (imported by main.js) contains the Range response logic', () => {
+    const js = read('electron/dist/file-range.js');
     expect(js).toContain('Accept-Ranges');
     expect(js).toContain('Content-Range');
   });

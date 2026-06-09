@@ -12,6 +12,10 @@ export const paths = {
   assets: (taskId: string, stepNumber: number) =>
     path.join(root, 'uploads', taskId, 'assets', `step${stepNumber}`),
   exports: (documentId: string) => path.join(root, 'exports', documentId),
+  // On-demand whisper model lives under the writable data dir (follows the user,
+  // not bundled into the app). The engine ships in resources/bin; only the
+  // ~190MB model downloads here on first transcription.
+  models: () => path.join(root, 'models'),
 };
 
 export function ensureDir(dir: string): void {

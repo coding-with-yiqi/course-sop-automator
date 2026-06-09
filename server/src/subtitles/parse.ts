@@ -9,12 +9,19 @@ export interface Cue {
 }
 
 /**
- * Reads an .srt or .vtt file and returns normalized cues.
+ * Reads an .srt / .vtt / .txt subtitle file and returns normalized cues.
  * Throws if the file is missing or contains zero cues.
+ *
+ * .txt is parsed tolerantly (WeChat-style timestamped transcripts) — see
+ * parseTxtCues. .srt/.vtt go through the strict `subtitle` library.
  */
 export async function parseSubtitleFile(filePath: string): Promise<Cue[]> {
   const raw = await fs.readFile(filePath, 'utf8');
   const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.txt') {
+    const { parseTxtCues } = await import('./txt.js');
+    return parseTxtCues(raw);
+  }
   if (ext !== '.srt' && ext !== '.vtt') {
     throw new Error(`不支持的字幕格式: ${ext}`);
   }
