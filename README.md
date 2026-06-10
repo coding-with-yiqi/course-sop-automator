@@ -60,25 +60,26 @@
 
 ### 方式二：没有 Mac / 想自己部署
 
-**需要找一个懂技术的朋友，或者你自己会用命令行。**
+**用 AI 编程助手（如 Claude Code、Cursor、Codex）帮你一键搞定。**
 
-环境要求：
-- Node.js 22+
-- FFmpeg（视频处理工具）
+你不需要懂代码。只要安装一个 AI 助手，然后把下面的指令发给它：
 
-用 Claude Code 或 Cursor 这样的 AI 助手，给它这段指令：
+```
+请帮我从 GitHub 下载并运行这个项目：
+https://github.com/coding-with-yiqi/course-sop-automator
 
-```bash
-git clone https://github.com/coding-with-yiqi/course-sop-automator.git
-cd course-sop-automator
-npm install
-echo "KIMI_API_KEY=sk-你的Key" > .env
-npm run dev
+我需要你：
+1. git clone 下来
+2. npm install 安装依赖
+3. 帮我申请一个 Kimi / DeepSeek / OpenAI 的 API Key
+4. 把 Key 写进 .env 文件
+5. npm run dev 启动
+6. 告诉我访问地址
 ```
 
-然后打开浏览器访问 `http://localhost:5173`。
+AI 助手会一步一步帮你完成。
 
-**API Key 怎么拿？**
+**API Key 怎么拿？**（如果 AI 助手不会，你自己来）
 - Kimi：https://kimi.com → 开发者中心 → 创建 API Key
 - DeepSeek：https://platform.deepseek.com → API 开放平台
 - OpenAI：https://platform.openai.com → API keys
