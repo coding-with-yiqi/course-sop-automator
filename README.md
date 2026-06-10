@@ -1,128 +1,135 @@
-# Matcha SOP · 教学视频自动转图文 SOP
+# Course SOP Automator
 
-本地运行的图文 SOP 自动化流水线。接收**课程视频 + 字幕**,通过 LLM(Kimi-k2.6)智能切片、抽取步骤、FFmpeg 抓帧 + dHash 去重,产出**结构化 HTML 操作说明书**。
+> 把课程视频自动变成图文操作说明书。
 
-## 快速开始
+一个本地运行的自动化流水线,接收 `.mp4` 视频 + 字幕文件,通过 LLM 智能切片、抽取步骤、FFmpeg 抓帧 + dHash 去重,产出结构化的 HTML 教学文档。支持多主题导出、可选字幕自动转录、PPT 原稿注入。
 
-### 前置依赖
+---
 
-- **Node.js ≥ 20**(better-sqlite3 需要)
-- **FFmpeg + ffprobe**(必须在 PATH 上)
-  - macOS:`brew install ffmpeg`
-  - Ubuntu:`sudo apt install ffmpeg`
-  - Windows:从 https://www.gyan.dev/ffmpeg/builds/ 下载并加入 PATH
-- **Kimi Coding Plan key**(`sk-kimi-...`),从 https://kimi.com 订阅获取
+## 产品定位
 
-### 启动
+面向讲师与课程学员。核心场景:
 
-```bash
-npm install                            # 装所有 workspace(shared/server/web)依赖
-cp .env.example .env                   # 填入 KIMI_API_KEY,其他保持默认
-npm run dev                            # 同时启动 server (4000) 和 vite (5173)
-```
+1. **讲师** 录制了一段操作演示视频(如「如何用 Docker 部署服务」)
+2. 上传视频 + 字幕(`.srt`/`.vtt`/`.txt`,可选;无字幕时系统自动转录)
+3. AI 自动切片、抽取步骤、抓取关键帧、识别代码块
+4. 输出 `.html` 单文件,可直接拖入 AI 知识库供学员检索
 
-浏览器打开 **http://localhost:5173**。
+**输出标准**: 代码块包在 `<pre><code>` 中,截图 base64 内嵌,单文件可离线阅读。支持 5 套视觉主题。
 
-启动时 server 会检测 FFmpeg,缺失会阻断启动并打印安装指引。
+---
 
-### 用法
+## 功能清单
 
-1. **Dashboard** (`/`):查看历史任务
-2. **上传任务** (`/upload`):拖入视频 + 字幕(可选)→ 提交 → 看到 5 阶段管线实时进度 → 自动跳到编辑页
-3. **编辑页** (`/documents/:id/edit`):三栏布局
-   - 左:步骤总览(timeline)
-   - 中:富文本(Tiptap)+ 代码(CodeMirror)+ 截图编辑
-   - 右:AI 调节(详细程度 / 受众语气 / 重新生成单步)
-4. **报告页** (`/documents/:id`):预览成品 + 导出独立 HTML(单文件,base64 内嵌图片)
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| 视频上传 | ✅ | 支持 `.mp4`/`.mov`/`.mkv`,拖拽上传 |
+| 字幕(可选) | ✅ | `.srt`/`.vtt`/`.txt`,无字幕时 whisper 自动转录 |
+| PPT 原稿注入 | ✅ | `.pptx`/`.pdf` → markdown → LLM prompt |
+| AI 步骤抽取 | ✅ | LLM 语义切片,区分理论/实操模式 |
+| 关键帧抓取 | ✅ | FFmpeg 精准抓帧 + dHash 去重 |
+| 编辑页 | ✅ | 富文本/代码块/截图/AI 调节/素材管理 |
+| 多主题导出 | ✅ | 抹茶/极简/技术深色/Notion/杂志 5 套主题 |
+| 悬浮视频 | ✅ | 右下角可播放原视频,支持 seek |
+| 多 LLM 支持 | ✅ | Kimi / DeepSeek / OpenAI 自动切换 |
+| 多平台同步 | ⏸ | 待排期(Notion/语雀/元宝/ima) |
 
-## 架构
+---
 
-单仓 npm workspaces,三平级目录:
+## 技术栈
 
-```
-shared/      @sop/shared  — 跨端 TS 类型(Task / SOPDocument / StageEvent)
-server/      @sop/server  — Fastify + SQLite + Drizzle + Kimi + FFmpeg
-web/         @sop/web     — React 18 + Vite + Tailwind + Tiptap + CodeMirror + Shiki
-```
+| 层级 | 技术 |
+|------|------|
+| 前端 | React 18 + Vite + TypeScript + Tailwind CSS |
+| 后端 | Fastify + TypeScript |
+| 数据库 | SQLite(better-sqlite3) + Drizzle ORM |
+| 视频处理 | 本机 FFmpeg(静态二进制捆绑) |
+| 去重 | sharp + dHash(Hamming ≤6) |
+| 转录 | whisper.cpp(本地编译,模型按需下载) |
+| LLM | Kimi / DeepSeek / OpenAI 兼容 OpenAI SDK |
+| 导出 | Handlebars + 内联 base64 |
 
-### 后端核心管线(5 阶段)
+---
 
-`server/src/pipeline/orchestrator.ts` 串行调度:
+## 安装(推荐用 AI Agent)
 
-1. **ingest** — ffprobe 取时长 + 解析 .srt/.vtt
-2. **chunk** — 触发词检测 + ≤25 分钟语义切片 + 多数投票判定 theory/practice 模式
-3. **llm** — Kimi 调用,zod 严校验 JSON 响应,失败重试 2 次降温度
-4. **frames** — 每步 5 候选帧 + dHash 8x8 灰度 + Hamming ≤6 跨步去重
-5. **assemble** — 写 documents 表 + emit done
+### 环境要求
 
-进度通过 **SSE**(`/api/tasks/:id/stream`)实时推送,持久化到 `stage_events` 表,断线用 `Last-Event-ID` 重连。
+- **Node.js 22+**
+- **FFmpeg + ffprobe**(命令行可用即可)
+- **macOS**(打包 App)或任意平台(源码运行 Web 模式)
 
-### 数据持久化
-
-```
-data/
-├── sop.db                                # SQLite(tasks / documents / stage_events)
-├── uploads/{taskId}/source.{mp4,srt}     # 原始上传
-├── chunks/{taskId}/segment-{i}.json      # 字幕切片中间产物
-├── frames/{taskId}/{stepN}/              # 候选帧 + selected.jpg + uploaded.*
-└── exports/{documentId}/                 # 导出的 HTML 文件
-```
-
-## 关键文件
-
-- [CLAUDE.md](CLAUDE.md) — 项目元规则、设计系统、行为约束
-- [resources/PRD.md](resources/PRD.md) — 产品需求(权威)
-- [resources/DESIGN.md](resources/DESIGN.md) — Matcha Quartet 色板 + 双字体规范
-- [todo.md](todo.md) — M7 多平台同步、未来增强、已知工程债
-
-### 后端代码索引
-
-| 路径 | 用途 |
-|---|---|
-| [server/src/index.ts](server/src/index.ts) | Fastify 启动 + FFmpeg 检测 + 注册路由 |
-| [server/src/pipeline/orchestrator.ts](server/src/pipeline/orchestrator.ts) | 5 阶段调度,fence 残留清理 |
-| [server/src/pipeline/eventBus.ts](server/src/pipeline/eventBus.ts) | EventEmitter + 持久化 + SSE replay |
-| [server/src/llm/kimi.ts](server/src/llm/kimi.ts) | OpenAI SDK 指向 Kimi,UA 伪装为 `claude-cli/1.0` |
-| [server/src/llm/prompts.ts](server/src/llm/prompts.ts) | 8 条绝对规则的 SYSTEM_PROMPT |
-| [server/src/ffmpeg/dedupe.ts](server/src/ffmpeg/dedupe.ts) | dHash + Hamming(PRD 硬指标 ③) |
-| [server/src/subtitles/segment.ts](server/src/subtitles/segment.ts) | ≤25min 切片 + 多数投票 mode |
-| [server/src/export/html.ts](server/src/export/html.ts) | Handlebars 模板,内嵌 base64 图 |
-| [server/src/validation/lcs.ts](server/src/validation/lcs.ts) | PRD ② 原句泄露校验 |
-
-### 前端代码索引
-
-| 路径 | 用途 |
-|---|---|
-| [web/src/pages/Dashboard.tsx](web/src/pages/Dashboard.tsx) | 工作台,真接 `/api/tasks` 5s 轮询 |
-| [web/src/pages/Upload.tsx](web/src/pages/Upload.tsx) | 上传 + 管线视图 + SSE |
-| [web/src/pages/EditDocument.tsx](web/src/pages/EditDocument.tsx) | 三栏编辑器 |
-| [web/src/pages/ReportDocument.tsx](web/src/pages/ReportDocument.tsx) | 报告页 + 导出 |
-| [web/src/stores/editStore.ts](web/src/stores/editStore.ts) | zustand,1.5s debounce 自动保存 |
-| [web/src/lib/sse.ts](web/src/lib/sse.ts) | `useTaskStream` hook |
-| [web/src/components/editor/RichTextEditor.tsx](web/src/components/editor/RichTextEditor.tsx) | Tiptap 富文本(行内 code) |
-| [web/src/components/editor/CodeEditor.tsx](web/src/components/editor/CodeEditor.tsx) | CodeMirror 6 可编辑代码 |
-| [web/src/components/editor/CodeViewer.tsx](web/src/components/editor/CodeViewer.tsx) | Shiki 只读高亮 |
-| [web/src/tailwind.config.ts](web/tailwind.config.ts) | Matcha Quartet 色板 + 字号 token |
-
-## 工具命令
+### 用 Claude Code 安装
 
 ```bash
-npm run dev                                                    # 同跑前后端
-npm --workspace web run build                                  # 构建前端到 web/dist
-npm --workspace server run build                               # 编译后端到 server/dist
-npm --workspace server run validate -- <documentId>            # PRD ② 原句泄露校验
+# 1. 克隆仓库
+git clone <repo-url>
+cd course-sop-automator
+
+# 2. 安装依赖
+npm install
+
+# 3. 配置 API Key(三选一,优先顺序 Kimi > DeepSeek > OpenAI)
+echo "KIMI_API_KEY=sk-your-key" > .env
+# 或 echo "DEEPSEEK_API_KEY=sk-your-key" > .env
+# 或 echo "OPENAI_API_KEY=sk-your-key" > .env
+
+# 4. 启动开发服务
+npm run dev
 ```
 
-## 设计约束
+然后打开浏览器访问 `http://localhost:5173`。
 
-UI 严格遵守 [resources/DESIGN.md](resources/DESIGN.md):
-- 配色:Matcha Quartet(matcha / aqua / lavender / blush)+ canvas (`#F6FCF4`) 底
-- 字体:**Noto Sans SC** 中文 / **Playfair Display** 仅限英文数字(永不与中文混排)
-- 圆角:卡片 18px / 按钮 100px / 输入 12px
-- Glassmorphism + 6px 渐变 stripe(matcha → blush)
+### macOS 打包 App
 
-## 安全 / ToS 备注
+```bash
+# 需要 Apple Silicon Mac
+npm run dist:mac
+# 产物: release/Course SOP Automator-0.1.0-arm64.dmg
+```
 
-- **Kimi Coding Plan key 通过 UA 伪装** 调用 Chat Completions(`KIMI_USER_AGENT=claude-cli/1.0`)。Moonshot 加严检测可能封号 — 详见 [todo.md](todo.md) 的安全章节
-- `.env` 在 `.gitignore` 里,**永不提交** API key
-- `npm audit` 有 10 个漏洞(fast-uri / esbuild dev),本地单机不阻塞,生产前需要升级 Fastify 5 / Vite 6
+---
+
+## 使用流程
+
+1. **上传** — 拖入 `.mp4` 视频 + 字幕(`.srt`/`.vtt`/`.txt`,可选)
+2. **等待** — SSE 实时显示进度:ingest → chunk → LLM → frames → assemble
+3. **编辑** — 调整步骤内容、替换截图、修改代码块
+4. **导出** — 选主题 → 下载 `.html` 单文件
+
+**无字幕?** 系统会自动用本机 whisper 转录(首次需下载 190MB 模型)。
+
+---
+
+## 项目结构
+
+```
+├── electron/          # Electron 主进程(macOS App 打包)
+├── server/            # Fastify 后端 API
+├── web/               # React 前端
+├── shared/            # 共享类型与常量
+├── bin/               # 捆绑的 FFmpeg 二进制(gitignored)
+└── scripts/           # 构建脚本
+```
+
+---
+
+## 开发
+
+```bash
+# 类型检查
+npx tsc --noEmit -p server/tsconfig.json
+npx tsc --noEmit -p web/tsconfig.json
+
+# 测试
+npm run test          # server + web + electron
+
+# 单独启动
+npm run dev           # server(:4000) + web(:5173) 同时
+```
+
+---
+
+## License
+
+MIT
