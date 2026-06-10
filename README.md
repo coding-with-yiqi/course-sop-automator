@@ -1,132 +1,131 @@
 # Course SOP Automator
 
-> 把课程视频自动变成图文操作说明书。
-
-一个本地运行的自动化流水线,接收 `.mp4` 视频 + 字幕文件,通过 LLM 智能切片、抽取步骤、FFmpeg 抓帧 + dHash 去重,产出结构化的 HTML 教学文档。支持多主题导出、可选字幕自动转录、PPT 原稿注入。
+**把课程视频自动变成图文操作说明书。**
 
 ---
 
-## 产品定位
+## 这是什么？
 
-面向讲师与课程学员。核心场景:
+你是一个讲师，录了一段操作演示视频（比如「如何用 Docker 部署服务」）。
 
-1. **讲师** 录制了一段操作演示视频(如「如何用 Docker 部署服务」)
-2. 上传视频 + 字幕(`.srt`/`.vtt`/`.txt`,可选;无字幕时系统自动转录)
-3. AI 自动切片、抽取步骤、抓取关键帧、识别代码块
-4. 输出 `.html` 单文件,可直接拖入 AI 知识库供学员检索
+你想把视频里的操作步骤整理成一份**图文文档**，方便学员：
+- 快速查找某个命令，不用拖视频进度条
+- 复制代码直接运行
+- 截图对照着做
 
-**输出标准**: 代码块包在 `<pre><code>` 中,截图 base64 内嵌,单文件可离线阅读。支持 5 套视觉主题。
+**这个工具就是干这个的。**
 
----
+你上传视频，它自动：
+1. 把视频按内容切成几段
+2. 每段提取出操作步骤（Step 1、Step 2...）
+3. 自动抓取关键画面截图
+4. 识别视频里的代码，转成可复制的代码块
+5. 输出一份 `.html` 文件，你可以直接发给学员，或拖入 AI 知识库
 
-## 功能清单
-
-| 功能 | 状态 | 说明 |
-|------|------|------|
-| 视频上传 | ✅ | 支持 `.mp4`/`.mov`/`.mkv`,拖拽上传 |
-| 字幕(可选) | ✅ | `.srt`/`.vtt`/`.txt`,无字幕时 whisper 自动转录 |
-| PPT 原稿注入 | ✅ | `.pptx`/`.pdf` → markdown → LLM prompt |
-| AI 步骤抽取 | ✅ | LLM 语义切片,区分理论/实操模式 |
-| 关键帧抓取 | ✅ | FFmpeg 精准抓帧 + dHash 去重 |
-| 编辑页 | ✅ | 富文本/代码块/截图/AI 调节/素材管理 |
-| 多主题导出 | ✅ | 抹茶/极简/技术深色/Notion/杂志 5 套主题 |
-| 悬浮视频 | ✅ | 右下角可播放原视频,支持 seek |
-| 多 LLM 支持 | ✅ | Kimi / DeepSeek / OpenAI 自动切换 |
-| 多平台同步 | ⏸ | 待排期(Notion/语雀/元宝/ima) |
+**支持 5 种视觉风格**：抹茶绿 / 极简黑白 / 技术深色 / Notion 风 / 杂志排版
 
 ---
 
-## 技术栈
+## 谁适合用？
 
-| 层级 | 技术 |
+| 人群 | 场景 |
 |------|------|
-| 前端 | React 18 + Vite + TypeScript + Tailwind CSS |
-| 后端 | Fastify + TypeScript |
-| 数据库 | SQLite(better-sqlite3) + Drizzle ORM |
-| 视频处理 | 本机 FFmpeg(静态二进制捆绑) |
-| 去重 | sharp + dHash(Hamming ≤6) |
-| 转录 | whisper.cpp(本地编译,模型按需下载) |
-| LLM | Kimi / DeepSeek / OpenAI 兼容 OpenAI SDK |
-| 导出 | Handlebars + 内联 base64 |
+| **技术讲师** | 编程/运维/设计课程，学员需要对着步骤操作 |
+| **企业培训** | 内部工具使用教程，新人入职手册 |
+| **知识博主** | 把视频内容沉淀为可检索的文档 |
 
 ---
 
-## 安装(推荐用 AI Agent)
+## 需要准备什么？
 
-### 环境要求
+**必须：**
+- 一个 `.mp4` 视频（你的课程录像）
+- 一个 AI 模型的 API Key（Kimi / DeepSeek / OpenAI 三选一，用于理解视频内容）
 
-- **Node.js 22+**
-- **FFmpeg + ffprobe**(命令行可用即可)
-- **macOS**(打包 App)或任意平台(源码运行 Web 模式)
+**可选：**
+- 字幕文件（`.srt` / `.vtt` / `.txt`）—— 有字幕更准更快；没有的话系统会自动语音转录
+- PPT 原稿（`.pptx` / `.pdf`）—— 帮助 AI 更好识别代码和术语
 
-### 用 Claude Code 安装
+---
+
+## 怎么用？
+
+### 方式一：有 Mac 电脑（最简单）
+
+1. 下载 `Course SOP Automator-0.1.0-arm64.dmg`（ Releases 页面）
+2. 双击安装，像普通 App 一样打开
+3. 在「设置」页填入你的 API Key（三选一：Kimi / DeepSeek / OpenAI）
+4. 回到工作台，拖入视频，点开始
+5. 等几分钟，去编辑页微调，导出 HTML
+
+### 方式二：没有 Mac / 想自己部署
+
+**需要找一个懂技术的朋友，或者你自己会用命令行。**
+
+环境要求：
+- Node.js 22+
+- FFmpeg（视频处理工具）
+
+用 Claude Code 或 Cursor 这样的 AI 助手，给它这段指令：
 
 ```bash
-# 1. 克隆仓库
-git clone <repo-url>
+git clone https://github.com/coding-with-yiqi/course-sop-automator.git
 cd course-sop-automator
-
-# 2. 安装依赖
 npm install
-
-# 3. 配置 API Key(三选一,优先顺序 Kimi > DeepSeek > OpenAI)
-echo "KIMI_API_KEY=sk-your-key" > .env
-# 或 echo "DEEPSEEK_API_KEY=sk-your-key" > .env
-# 或 echo "OPENAI_API_KEY=sk-your-key" > .env
-
-# 4. 启动开发服务
+echo "KIMI_API_KEY=sk-你的Key" > .env
 npm run dev
 ```
 
 然后打开浏览器访问 `http://localhost:5173`。
 
-### macOS 打包 App
-
-```bash
-# 需要 Apple Silicon Mac
-npm run dist:mac
-# 产物: release/Course SOP Automator-0.1.0-arm64.dmg
-```
+**API Key 怎么拿？**
+- Kimi：https://kimi.com → 开发者中心 → 创建 API Key
+- DeepSeek：https://platform.deepseek.com → API 开放平台
+- OpenAI：https://platform.openai.com → API keys
 
 ---
 
 ## 使用流程
 
-1. **上传** — 拖入 `.mp4` 视频 + 字幕(`.srt`/`.vtt`/`.txt`,可选)
-2. **等待** — SSE 实时显示进度:ingest → chunk → LLM → frames → assemble
-3. **编辑** — 调整步骤内容、替换截图、修改代码块
-4. **导出** — 选主题 → 下载 `.html` 单文件
+```
+上传视频 → AI 自动处理（3-10 分钟）→ 编辑微调 → 导出 HTML
+```
 
-**无字幕?** 系统会自动用本机 whisper 转录(首次需下载 190MB 模型)。
+**编辑页可以做什么：**
+- 修改步骤标题和内容
+- 替换不清晰的截图
+- 修正代码块里的错误
+- 调整详细程度（给新手看 vs 给老手看）
+
+**导出后得到什么：**
+- 一个 `.html` 文件
+- 打开就是完整的图文文档
+- 截图全部内嵌，离线也能看
+- 代码可以直接复制
 
 ---
 
-## 项目结构
+## 常见问题
 
-```
-├── electron/          # Electron 主进程(macOS App 打包)
-├── server/            # Fastify 后端 API
-├── web/               # React 前端
-├── shared/            # 共享类型与常量
-├── bin/               # 捆绑的 FFmpeg 二进制(gitignored)
-└── scripts/           # 构建脚本
-```
+**Q：没有字幕怎么办？**
+A：不用字幕也能跑。系统会自动语音转录（首次需要下载约 190MB 的语音模型，只需一次）。但上传人工校对过的字幕，结果会更准确。
+
+**Q：视频很长（1 小时+）可以吗？**
+A：可以。系统会自动按内容切成 ≤25 分钟的段，逐段处理，不会溢出。
+
+**Q：输出的 HTML 能放进飞书/Notion/语雀吗？**
+A：目前直接导出 HTML。多平台同步功能正在开发中（M7）。
+
+**Q：我的 API Key 安全吗？**
+A：Key 只保存在你本地电脑的数据库里，不会上传到任何服务器。
 
 ---
 
-## 开发
+## 技术栈（给开发者看）
 
-```bash
-# 类型检查
-npx tsc --noEmit -p server/tsconfig.json
-npx tsc --noEmit -p web/tsconfig.json
+React 18 + Vite + Fastify + SQLite + FFmpeg + LLM（Kimi/DeepSeek/OpenAI）
 
-# 测试
-npm run test          # server + web + electron
-
-# 单独启动
-npm run dev           # server(:4000) + web(:5173) 同时
-```
+详细架构见源码。
 
 ---
 
