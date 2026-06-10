@@ -157,7 +157,7 @@ export function Dashboard() {
     <div className="flex flex-col gap-10">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-headline-lg font-bold text-forest mb-2">欢迎回来,准备好自动化了吗?</h2>
+          <h2 className="text-headline-lg font-bold text-forest mb-2">工作台</h2>
           <p className="text-body-md font-light text-sage">管理你的教学文档任务和处理进度。</p>
         </div>
         <Link
@@ -165,7 +165,7 @@ export function Dashboard() {
           className="matcha-gradient text-white px-6 py-3 rounded-pill font-bold text-base shadow-card hover:shadow-card-hover transition-all hover:-translate-y-0.5 inline-flex items-center gap-2 self-start md:self-auto"
         >
           <Sparkles className="w-5 h-5" />
-          新建自动化任务
+          新建任务
         </Link>
       </header>
 
@@ -239,9 +239,9 @@ function EmptyState() {
         <div className="w-20 h-20 rounded-full bg-matcha-container/30 flex items-center justify-center">
           <Sparkles className="w-9 h-9 text-matcha" />
         </div>
-        <h4 className="text-headline-sm font-bold text-forest">准备好自动化了吗?</h4>
+        <h4 className="text-headline-sm font-bold text-forest">开始创建教学文档</h4>
         <p className="text-body-md text-mist font-light max-w-lg">
-          上传一个带字幕的课程视频,AI 会自动切片、抽取步骤、抓取关键帧,几分钟后生成图文教学文档。
+          上传课程视频,AI 会自动切片、抽取步骤、抓取关键帧,生成图文教学文档。支持 .srt / .vtt / .txt 字幕,无字幕时可自动转录。
         </p>
         <Link
           to="/upload"
@@ -258,7 +258,7 @@ function EmptyState() {
           step={1}
           icon={CloudUpload}
           title="上传素材"
-          description="选择视频 + 字幕文件(.srt/.vtt),可选上传 PPT 原稿辅助 AI 识别"
+          description="选择视频 + 字幕文件(.srt/.vtt/.txt),可选上传 PPT 原稿辅助 AI 识别"
         />
         <StepCard
           step={2}

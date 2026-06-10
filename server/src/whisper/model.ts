@@ -48,7 +48,8 @@ export async function downloadModel(
 
   let lastReported = -1;
   const report = (downloaded: number, total: number) => {
-    const pct = total > 0 ? Math.round((downloaded / total) * 100) : 0;
+    const raw = total > 0 ? Math.round((downloaded / total) * 100) : 0;
+    const pct = Math.min(raw, 100); // guard: content-length may be off
     if (pct !== lastReported && onProgress) {
       lastReported = pct;
       onProgress({ downloadedBytes: downloaded, totalBytes: total, percent: pct });

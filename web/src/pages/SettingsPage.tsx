@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { KeyRound, Link2, Save, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Save, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { api, ApiError } from '@/lib/api.ts';
 
@@ -9,64 +9,38 @@ interface SettingField {
   description: string;
   placeholder: string;
   type: 'password' | 'text';
-  group: 'llm' | 'ocr' | 'sync';
+  group: 'llm';
 }
 
 const FIELDS: SettingField[] = [
   {
     key: 'KIMI_API_KEY',
     label: 'Kimi API Key',
-    description: '用于 AI 步骤抽取和总结生成',
+    description: 'Kimi k2.6 模型，推荐用于中文课程',
     placeholder: 'sk-xxxxxxxx',
     type: 'password',
     group: 'llm',
   },
   {
-    key: 'PADDLE_OCR_TOKEN',
-    label: 'PaddleOCR Token',
-    description: '用于 PPT 原稿 OCR 识别',
-    placeholder: '可选',
+    key: 'DEEPSEEK_API_KEY',
+    label: 'DeepSeek API Key',
+    description: 'DeepSeek V3 模型，性价比高',
+    placeholder: 'sk-xxxxxxxx',
     type: 'password',
-    group: 'ocr',
+    group: 'llm',
   },
   {
-    key: 'NOTION_TOKEN',
-    label: 'Notion Integration Token',
-    description: '用于同步文档到 Notion',
-    placeholder: 'secret_xxxxxxxx',
+    key: 'OPENAI_API_KEY',
+    label: 'OpenAI API Key',
+    description: 'GPT-4o 等模型',
+    placeholder: 'sk-xxxxxxxx',
     type: 'password',
-    group: 'sync',
-  },
-  {
-    key: 'NOTION_PARENT_PAGE_ID',
-    label: 'Notion 父页面 ID',
-    description: '同步文档的默认父页面',
-    placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-    type: 'text',
-    group: 'sync',
-  },
-  {
-    key: 'YUQUE_TOKEN',
-    label: '语雀 Token',
-    description: '用于同步文档到语雀',
-    placeholder: '可选',
-    type: 'password',
-    group: 'sync',
-  },
-  {
-    key: 'YUQUE_NAMESPACE',
-    label: '语雀 Namespace',
-    description: '知识库路径，如 username/repo',
-    placeholder: 'username/repo',
-    type: 'text',
-    group: 'sync',
+    group: 'llm',
   },
 ];
 
 const GROUP_META: Record<string, { title: string; icon: typeof Sparkles; color: string }> = {
   llm: { title: 'AI 模型', icon: Sparkles, color: 'text-matcha' },
-  ocr: { title: 'OCR 识别', icon: KeyRound, color: 'text-aqua' },
-  sync: { title: '同步平台', icon: Link2, color: 'text-lavender' },
 };
 
 export function SettingsPage() {
@@ -105,7 +79,6 @@ export function SettingsPage() {
     setError(null);
     setSaved(false);
     try {
-      // Only send non-empty values
       const payload: Record<string, string> = {};
       for (const [k, v] of Object.entries(values)) {
         if (v.trim()) payload[k] = v.trim();
@@ -140,7 +113,7 @@ export function SettingsPage() {
         <div>
           <h2 className="text-headline-lg font-bold text-forest mb-2">设置</h2>
           <p className="text-body-md text-sage font-light">
-            配置 AI 模型、OCR 和同步平台的 API 密钥。数据仅保存在本地数据库中。
+            配置 AI 模型的 API 密钥。支持 Kimi、DeepSeek、OpenAI，优先使用第一个有 Key 的提供商。数据仅保存在本地数据库中。
           </p>
         </div>
         <div className="flex items-center gap-3">

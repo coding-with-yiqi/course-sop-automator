@@ -1,4 +1,4 @@
-import { llmClient, KIMI_MODEL } from './client.js';
+import { llmClient, currentModel } from './client.js';
 import { log } from '../util/log.js';
 
 export interface ScreenshotAnalysis {
@@ -45,7 +45,7 @@ export async function analyzeCandidates(
 
   try {
     const response = await llmClient().chat.completions.create({
-      model: KIMI_MODEL,
+      model: currentModel(),
       temperature: 0.2,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -117,7 +117,7 @@ export async function recommendSelection(
 
   try {
     const response = await llmClient().chat.completions.create({
-      model: KIMI_MODEL,
+      model: currentModel(),
       temperature: 0.2,
       messages: [
         { role: 'system', content: system },

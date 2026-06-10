@@ -16,24 +16,9 @@ const ACCENT_BAR: Record<SOPStep['accentColor'], string> = {
   blush: 'bg-blush',
 };
 
-const SYNC_PLATFORMS: ReadonlyArray<{
-  id: 'yuque' | 'notion' | 'yuanbao' | 'ima';
-  label: string;
-  letter: string;
-  bg: string;
-  fg: string;
-}> = [
-  { id: 'yuque', label: '同步到语雀', letter: 'Y', bg: 'bg-white', fg: 'text-green-600' },
-  { id: 'notion', label: '同步到 Notion', letter: 'N', bg: 'bg-white', fg: 'text-black' },
-  { id: 'yuanbao', label: '同步到元宝', letter: 'Y', bg: 'bg-white', fg: 'text-blue-600' },
-  { id: 'ima', label: '同步到 ima 知识库', letter: 'I', bg: 'bg-white', fg: 'text-indigo-600' },
-];
-
-interface SyncState {
-  loading: boolean;
-  error: string | null;
-  url: string | null;
-}
+// Sync platforms hidden for final shipping (M7 not yet tested)
+// const SYNC_PLATFORMS = [...]
+// interface SyncState { ... }
 
 export function ReportDocument() {
   const { id } = useParams<{ id: string }>();
@@ -194,7 +179,6 @@ function ExportPanel({ documentId }: { documentId: string }) {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [syncStates, setSyncStates] = useState<Record<string, SyncState>>({});
   // Theme choice persists — a lecturer usually sticks with one style.
   const [theme, setTheme] = useState<ThemeKey>(() => loadTheme());
 
@@ -236,112 +220,9 @@ function ExportPanel({ documentId }: { documentId: string }) {
     }
   }
 
-  async function handleSync(platform: string) {
-    setSyncStates((prev) => ({
-      ...prev,
-      [platform]: { loading: true, error: null, url: null },
-    }));
-    try {
-      let url: string;
-      if (platform === 'notion') {
-        // 从 settings 读取配置
-        const settings = await api.getSettings();
-        if (!settings.NOTION_TOKEN || !settings.NOTION_PARENT_PAGE_ID) {
-          throw new Error('请先配置 Notion Token 和 Parent Page ID');
-        }
-        const result = await api.syncToNotion(documentId, {
-          token: settings.NOTION_TOKEN,
-          parentPageId: settings.NOTION_PARENT_PAGE_ID,
-        });
-        url = result.url;
-      } else if (platform === 'yuque') {
-        const settings = await api.getSettings();
-        if (!settings.YUQUE_TOKEN || !settings.YUQUE_NAMESPACE) {
-          throw new Error('请先配置语雀 Token 和 Namespace');
-        }
-        const result = await api.syncToYuque(documentId, {
-          token: settings.YUQUE_TOKEN,
-          namespace: settings.YUQUE_NAMESPACE,
-        });
-        url = result.url;
-      } else if (platform === 'yuanbao' || platform === 'ima') {
-        // 导出为 Markdown 并尝试通过 URL scheme 唤起客户端
-        url = await handleSchemeSync(platform);
-      } else {
-        throw new Error('该平台暂不支持');
-      }
-      setSyncStates((prev) => ({
-        ...prev,
-        [platform]: { loading: false, error: null, url },
-      }));
-    } catch (err) {
-      setSyncStates((prev) => ({
-        ...prev,
-        [platform]: {
-          loading: false,
-          error: err instanceof Error ? err.message : '同步失败',
-          url: null,
-        },
-      }));
-    }
-  }
-
-  async function handleSchemeSync(platform: 'yuanbao' | 'ima'): Promise<string> {
-    // 1. 生成 Markdown 内容
-    const doc = document as unknown as SOPDocument;
-    const mdContent = generateMarkdown(doc);
-    const blob = new Blob([mdContent], { type: 'text/markdown' });
-    const fileName = `${doc.title || 'export'}.md`;
-
-    // 2. 尝试 URL scheme 唤起
-    const scheme = platform === 'yuanbao' ? 'yuanbao://import' : 'ima://import';
-    const schemeUrl = `${scheme}?file=${encodeURIComponent(fileName)}`;
-
-    // 3. 下载 .md 文件作为 fallback
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
-
-    // 4. 尝试唤起（浏览器会静默失败 if scheme 未注册）
-    setTimeout(() => {
-      window.location.href = schemeUrl;
-    }, 500);
-
-    return '';
-  }
-
-  function generateMarkdown(doc: SOPDocument | null): string {
-    if (!doc) return '';
-    const lines: string[] = [`# ${doc.title}`];
-    if (doc.speaker?.name) {
-      lines.push('', `> ${doc.speaker.name} — ${doc.speaker.title}`, '');
-    }
-    if (doc.summary) {
-      lines.push('', '## 课程总览', doc.summary);
-    }
-    doc.steps.forEach((step: SOPStep) => {
-      lines.push('', `## 步骤 ${step.stepNumber}: ${step.title}`);
-      if (step.shortDescription) lines.push(step.shortDescription);
-      const plain = step.instructionRichText
-        .replace(/<code>(.*?)<\/code>/g, '`$1`')
-        .replace(/<[^>]+>/g, '');
-      lines.push(plain);
-      if (step.codeBlock) {
-        lines.push('', `\`\`\`${step.codeBlock.language}`);
-        if (step.codeBlock.filename) lines.push(`// ${step.codeBlock.filename}`);
-        lines.push(step.codeBlock.content, '```');
-      }
-      if (step.screenshots?.length) {
-        lines.push('', '> 截图: 请手动将下方图片拖入知识库');
-        step.screenshots.forEach((ss: { url: string; alt: string }) => {
-          lines.push(`![${ss.alt}](${ss.url})`);
-        });
-      }
-    });
-    return lines.join('\n');
-  }
+  // Sync platforms hidden for final shipping (M7 not yet tested)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Sync platforms hidden for final shipping (M7 not yet tested)
 
   return (
     <section className="glass-panel p-5 rounded-card shadow-card border border-border-subtle">
@@ -412,60 +293,7 @@ function ExportPanel({ documentId }: { documentId: string }) {
           <ChevronRight className="w-4 h-4 text-mist" />
         </button>
       </div>
-      <div className="pt-4 mt-4 border-t border-border-subtle">
-        <p className="text-[11px] font-bold text-mist uppercase tracking-wider mb-3">
-          一键同步
-        </p>
-        <div className="space-y-2">
-          {SYNC_PLATFORMS.map((p) => {
-            const state = syncStates[p.id] ?? { loading: false, error: null, url: null };
-            const isSchemeMode = p.id === 'yuanbao' || p.id === 'ima';
-            return (
-              <div key={p.id} className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => handleSync(p.id)}
-                  disabled={state.loading}
-                  className={clsx(
-                    'w-full flex items-center gap-3 p-3 rounded-input transition-colors text-left',
-                    'bg-surface hover:bg-surface-bright border border-border-subtle hover:border-matcha',
-                  )}
-                >
-                  <span className={clsx('w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold', p.bg, p.fg)}>
-                    {p.letter}
-                  </span>
-                  <span className="text-body-md text-on-surface">
-                    {state.loading ? '处理中...' : state.url ? '已同步 ✓' : p.label}
-                  </span>
-                  {isSchemeMode && (
-                    <span className="ml-auto text-[10px] text-mist bg-surface-bright px-1.5 py-0.5 rounded">
-                      半自动
-                    </span>
-                  )}
-                </button>
-                {state.error && (
-                  <p className="text-error text-body-sm bg-error-container/50 px-3 py-1.5 rounded-input">{state.error}</p>
-                )}
-                {state.url && (
-                  <a
-                    href={state.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-matcha text-body-sm hover:underline block px-1"
-                  >
-                    查看文档 →
-                  </a>
-                )}
-                {isSchemeMode && !state.error && !state.url && (
-                  <p className="text-mist text-body-sm px-1">
-                    已下载 .md 文件，请拖入 {p.id === 'yuanbao' ? '元宝' : 'ima'} 客户端
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Sync platforms hidden for final shipping (M7 not yet tested) */}
       {error && (
         <p className="mt-3 text-error text-body-sm bg-error-container/50 px-3 py-2 rounded-input">{error}</p>
       )}

@@ -15,7 +15,7 @@ import { probeVideo } from '../ffmpeg/probe.js';
 import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.js';
 import { findDuplicates } from '../ffmpeg/dedupe.js';
 import { getWhisperCliPath } from '../ffmpeg/detect.js';
-import { llmClient, KIMI_MODEL } from '../llm/client.js';
+import { llmClient, currentModel } from '../llm/client.js';
 import { SYSTEM_PROMPT, buildUserPrompt } from '../llm/prompts.js';
 import { LlmResponseSchema, type LlmStep } from '../llm/schema.js';
 import { generateCourseSummary } from '../llm/summary.js';
@@ -221,7 +221,7 @@ async function callKimi(
     let content: string | null | undefined;
     try {
       const response = await llmClient().chat.completions.create({
-        model: KIMI_MODEL,
+        model: currentModel(),
         temperature,
         response_format: { type: 'json_object' },
         messages: [

@@ -23,7 +23,7 @@ import { paths, isSafePath } from '../util/paths.js';
 import { log } from '../util/log.js';
 import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.js';
 import { dedupeCandidates } from '../ffmpeg/dedupe.js';
-import { llmClient, KIMI_MODEL } from '../llm/client.js';
+import { llmClient, currentModel } from '../llm/client.js';
 import { generateCourseSummary } from '../llm/summary.js';
 import { renderDocumentHtml } from '../export/html.js';
 import { parseSlides } from '../slides/parse.js';
@@ -441,7 +441,7 @@ ${assetBlock}
 
     try {
       const response = await llmClient().chat.completions.create({
-        model: KIMI_MODEL,
+        model: currentModel(),
         temperature: 0.3,
         response_format: { type: 'json_object' },
         messages: [

@@ -4,8 +4,8 @@ import clsx from 'clsx';
 
 const TABS = [
   { key: 'dashboard', label: '工作台' },
-  { key: 'status', label: '自动化状态' },
-  { key: 'history', label: '历史记录' },
+  // { key: 'status', label: '自动化状态' },   // hidden for shipping
+  // { key: 'history', label: '历史记录' },    // hidden for shipping
 ] as const;
 
 type ActiveTab = (typeof TABS)[number]['key'];

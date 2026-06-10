@@ -35,6 +35,17 @@ const schema = z.object({
   KIMI_BASE_URL: z.string().default('https://api.kimi.com/coding/v1'),
   KIMI_MODEL: z.string().default('kimi-for-coding'),
   KIMI_USER_AGENT: z.string().default('claude-cli/1.0'),
+
+  DEEPSEEK_API_KEY: z.string().optional(),
+  DEEPSEEK_BASE_URL: z.string().default('https://api.deepseek.com/v1'),
+  DEEPSEEK_MODEL: z.string().default('deepseek-chat'),
+  DEEPSEEK_USER_AGENT: z.string().default('sop-automator/1.0'),
+
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
+  OPENAI_MODEL: z.string().default('gpt-4o'),
+  OPENAI_USER_AGENT: z.string().default('sop-automator/1.0'),
+
   PADDLE_OCR_TOKEN: z.string().optional(),
   PADDLE_OCR_JOB_URL: z.string().default('https://paddleocr.aistudio-app.com/api/v2/ocr/jobs'),
   PADDLE_OCR_MODEL: z.string().default('PaddleOCR-VL-1.5'),
