@@ -902,6 +902,28 @@ ${assetBlock}
         .send({ ok: false, error: { code: 'SYNC_FAILED', message: err instanceof Error ? err.message : '同步到语雀失败' } });
     }
   });
+
+  // 从 exports 恢复文档（数据库记录丢失但导出文件还在时）
+  app.post('/api/restore/exports', async (_req, reply) => {
+    try {
+      const { restoreAllExports } = await import('../services/restore.js');
+      const results = restoreAllExports();
+      return {
+        ok: true,
+        data: {
+          restored: results.filter(r => r.status === 'restored').length,
+          skipped: results.filter(r => r.status === 'skipped').length,
+          failed: results.filter(r => r.status === 'failed').length,
+          details: results,
+        },
+      };
+    } catch (err) {
+      log.error({ err }, 'restore exports failed');
+      return reply
+        .status(500)
+        .send({ ok: false, error: { code: 'RESTORE_FAILED', message: err instanceof Error ? err.message : '恢复失败' } });
+    }
+  });
 }
 
 function pickVideoFile(originalName: string): string {
