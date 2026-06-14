@@ -1,4 +1,4 @@
-import { llmClient, currentModel } from './client.js';
+import { llmClient, currentModel, clampTemperature, describeLlmError } from './client.js';
 import { log } from '../util/log.js';
 
 export interface ScreenshotAnalysis {
@@ -46,7 +46,7 @@ export async function analyzeCandidates(
   try {
     const response = await llmClient().chat.completions.create({
       model: currentModel(),
-      temperature: 0.2,
+      temperature: clampTemperature(0.2),
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userLines },
@@ -75,7 +75,7 @@ export async function analyzeCandidates(
       };
     });
   } catch (err) {
-    log.error({ err }, 'analyzeCandidates failed');
+    log.error({ err, llm: describeLlmError(err) }, 'analyzeCandidates failed');
     return inputs.map((item) => ({
       timestamp: item.timestamp,
       summary: '分析失败',
@@ -118,7 +118,7 @@ export async function recommendSelection(
   try {
     const response = await llmClient().chat.completions.create({
       model: currentModel(),
-      temperature: 0.2,
+      temperature: clampTemperature(0.2),
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: lines },
@@ -135,7 +135,7 @@ export async function recommendSelection(
       reason: (json[i]?.reason ?? '').slice(0, 20) || '无建议',
     }));
   } catch (err) {
-    log.error({ err }, 'recommendSelection failed');
+    log.error({ err, llm: describeLlmError(err) }, 'recommendSelection failed');
     return inputs.map(() => ({ keep: true, reason: '分析失败' }));
   }
 }

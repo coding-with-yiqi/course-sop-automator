@@ -15,7 +15,7 @@ import { probeVideo } from '../ffmpeg/probe.js';
 import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.js';
 import { findDuplicates } from '../ffmpeg/dedupe.js';
 import { getWhisperCliPath } from '../ffmpeg/detect.js';
-import { llmClient, currentModel } from '../llm/client.js';
+import { llmClient, currentModel, clampTemperature } from '../llm/client.js';
 import { SYSTEM_PROMPT, buildUserPrompt } from '../llm/prompts.js';
 import { LlmResponseSchema, type LlmStep } from '../llm/schema.js';
 import { generateCourseSummary } from '../llm/summary.js';
@@ -217,7 +217,7 @@ async function callKimi(
       await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
     }
 
-    const temperature = attempt === 0 ? 0.2 : 0;
+    const temperature = clampTemperature(0.2);
     let content: string | null | undefined;
     try {
       const response = await llmClient().chat.completions.create({
@@ -253,6 +253,14 @@ async function callKimi(
         throw new Error(
           `Kimi 认证失败(HTTP ${status}):API Key 无效或已过期,请在 .env 更新 KIMI_API_KEY`,
         );
+      }
+      // 其余 4xx(除 429 限流)是「请求本身不合法」——参数被拒、model 不存在、
+      // 上游改了契约。重试只会重复同一个错误,立即抛出真实原因(含上游 message),
+      // 别让它沉在 5 次退避后才浮现。这正是「temperature 非法」这类变更的快速信号。
+      if (typeof status === 'number' && status >= 400 && status < 500 && status !== 429) {
+        const upstream =
+          (err as { error?: { message?: string } }).error?.message ?? (err as Error).message;
+        throw new Error(`Kimi 请求被拒(HTTP ${status}):${upstream}`);
       }
       const issues = err instanceof Error && 'issues' in err
         ? (err as { issues: unknown }).issues

@@ -23,7 +23,7 @@ import { paths, isSafePath } from '../util/paths.js';
 import { log } from '../util/log.js';
 import { extractFrames, candidateTimestamps } from '../ffmpeg/extract.js';
 import { dedupeCandidates } from '../ffmpeg/dedupe.js';
-import { llmClient, currentModel } from '../llm/client.js';
+import { llmClient, currentModel, clampTemperature, describeLlmError } from '../llm/client.js';
 import { generateCourseSummary } from '../llm/summary.js';
 import { renderDocumentHtml } from '../export/html.js';
 import { parseSlides } from '../slides/parse.js';
@@ -381,7 +381,7 @@ export function registerDocumentRoutes(app: FastifyInstance): void {
         persistDocument(doc);
         return { ok: true, data: { summary } };
       } catch (err) {
-        log.error({ err }, 'summary regenerate failed');
+        log.error({ err, llm: describeLlmError(err) }, 'summary regenerate failed');
         return reply.status(502).send({
           ok: false,
           error: { code: 'LLM_FAILED', message: '总结生成失败,请重试' },
@@ -442,7 +442,7 @@ ${assetBlock}
     try {
       const response = await llmClient().chat.completions.create({
         model: currentModel(),
-        temperature: 0.3,
+        temperature: clampTemperature(0.3),
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: system },
@@ -464,7 +464,7 @@ ${assetBlock}
       persistDocument(doc);
       return { ok: true, data: { step } };
     } catch (err) {
-      log.error({ err }, 'regenerate failed');
+      log.error({ err, llm: describeLlmError(err) }, 'regenerate failed');
       return reply
         .status(502)
         .send({ ok: false, error: { code: 'LLM_FAILED', message: '重新生成失败,请重试' } });

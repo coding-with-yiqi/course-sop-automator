@@ -99,13 +99,14 @@ test.describe('Dashboard', () => {
   });
 
   test('shows stats cards', async () => {
-    await expect(page.getByText('处理中')).toBeVisible();
-    await expect(page.getByText('已完成')).toBeVisible();
-    await expect(page.getByText('待导出')).toBeVisible();
+    // 三张统计卡的标签。用 .first() 避免与任务状态 chip(同名文案)冲突触发 strict mode。
+    await expect(page.getByText('处理中').first()).toBeVisible();
+    await expect(page.getByText('已完成').first()).toBeVisible();
+    await expect(page.getByText('待导出').first()).toBeVisible();
   });
 
-  test('shows "新建自动化任务" CTA button', async () => {
-    const cta = page.getByRole('link', { name: /新建自动化任务/ });
+  test('shows "新建任务" CTA button', async () => {
+    const cta = page.getByRole('link', { name: /新建任务/ });
     await expect(cta).toBeVisible();
     await cta.click();
     await expect.poll(() => page.evaluate(() => window.location.hash)).toMatch(/upload/);

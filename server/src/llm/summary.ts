@@ -1,5 +1,5 @@
 import type { SOPStep } from '@sop/shared';
-import { llmClient, currentModel } from './client.js';
+import { llmClient, currentModel, clampTemperature } from './client.js';
 
 interface SummaryInput {
   title: string;
@@ -26,7 +26,7 @@ ${steps.join('\n')}
 
   const response = await llmClient().chat.completions.create({
     model: currentModel(),
-    temperature: 0.2,
+    temperature: clampTemperature(0.2),
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: system },
