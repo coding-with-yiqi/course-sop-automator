@@ -1,7 +1,7 @@
 {
   "name": "course-sop-automator",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI-powered video to SOP document pipeline",
   "author": "Course SOP Team",
   "main": "electron/dist/bootstrap.cjs",

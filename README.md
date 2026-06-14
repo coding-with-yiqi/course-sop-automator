@@ -62,7 +62,7 @@
 
 1. **下载 DMG 安装包**：
 
-   👉 [点击下载 Course.SOP.Automator-0.1.0-arm64.dmg](https://github.com/coding-with-yiqi/course-sop-automator/releases/download/v0.1.0/Course.SOP.Automator-0.1.0-arm64.dmg)
+   👉 [点击下载 Course.SOP.Automator-0.1.1-arm64.dmg](https://github.com/coding-with-yiqi/course-sop-automator/releases/download/v0.1.1/Course.SOP.Automator-0.1.1-arm64.dmg)
 
 2. 双击安装，像普通 App 一样打开
 
