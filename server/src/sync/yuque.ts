@@ -1,5 +1,6 @@
 import type { SOPDocument, SOPStep } from '@sop/shared';
 import { log } from '../util/log.js';
+import { richTextToPlain } from '../util/richtext.js';
 
 interface YuqueConfig {
   token: string;
@@ -19,9 +20,9 @@ function stepToMarkdown(step: SOPStep): string {
     lines.push('');
   }
 
-  // Instruction (strip HTML)
+  // Instruction (strip HTML, keep list/paragraph line breaks)
   if (step.instructionRichText) {
-    const plain = step.instructionRichText.replace(/<[^>]+>/g, '');
+    const plain = richTextToPlain(step.instructionRichText);
     if (plain.trim()) {
       lines.push(plain);
       lines.push('');

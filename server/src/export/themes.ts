@@ -59,6 +59,9 @@ const MATCHA_CSS = `
   .step .desc { color: var(--sage); margin: 0 0 16px; font-size: 14px; }
   .step .body { color: var(--forest); margin: 0 0 16px; font-size: 15.5px; line-height: 1.85; }
   .step .body code { background: var(--surface-bright); color: var(--matcha); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: "SF Mono", Menlo, monospace; }
+  .step .body ul, .step .body ol { margin: 8px 0; padding-left: 22px; }
+  .step .body li { margin: 4px 0; line-height: 1.7; }
+  .step .body li::marker { color: var(--matcha); }
   .screenshots { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 16px 0; }
   .screenshot { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(26, 77, 23, 0.06); }
   .screenshot img { width: 100%; display: block; }
@@ -91,6 +94,8 @@ const MINIMAL_CSS = `
   .step .desc { color: #555; margin: 0 0 14px; font-size: 14px; }
   .step .body { color: #1a1a1a; margin: 0 0 16px; font-size: 15.5px; line-height: 1.8; }
   .step .body code { background: #eee; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 13px; font-family: "SF Mono", Menlo, monospace; }
+  .step .body ul, .step .body ol { margin: 8px 0; padding-left: 22px; }
+  .step .body li { margin: 4px 0; line-height: 1.7; }
   .screenshots { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 16px 0; }
   .screenshot { border: 1px solid #ccc; overflow: hidden; }
   .screenshot img { width: 100%; display: block; }
@@ -125,6 +130,9 @@ const TERMINAL_CSS = `
   .step .desc { color: #64748b; margin: 0 0 14px; font-size: 14px; }
   .step .body { color: #1e293b; margin: 0 0 16px; font-size: 15.5px; line-height: 1.8; }
   .step .body code { background: #0f172a; color: #2dd4bf; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: "SF Mono", Menlo, monospace; }
+  .step .body ul, .step .body ol { margin: 8px 0; padding-left: 22px; }
+  .step .body li { margin: 4px 0; line-height: 1.7; }
+  .step .body li::marker { color: #2dd4bf; }
   .screenshots { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 16px 0; }
   .screenshot { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
   .screenshot img { width: 100%; display: block; }
@@ -157,6 +165,8 @@ const NOTION_CSS = `
   .step .desc { color: #787774; margin: 0 0 14px; font-size: 14px; }
   .step .body { color: #37352f; margin: 0 0 16px; font-size: 16px; line-height: 1.8; }
   .step .body code { background: #f1f1ef; color: #eb5757; padding: 2px 6px; border-radius: 4px; font-size: 13.5px; font-family: "SF Mono", Menlo, monospace; }
+  .step .body ul, .step .body ol { margin: 8px 0; padding-left: 22px; }
+  .step .body li { margin: 4px 0; line-height: 1.7; }
   .screenshots { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 16px 0; }
   .screenshot { border: 1px solid #e9e9e7; border-radius: 6px; overflow: hidden; }
   .screenshot img { width: 100%; display: block; }
@@ -191,6 +201,9 @@ const MAGAZINE_CSS = `
   .step .desc { color: #888; margin: 0 0 16px; font-size: 15px; font-style: italic; }
   .step .body { color: #2a2a2a; margin: 0 0 18px; font-size: 16.5px; line-height: 1.9; }
   .step .body code { background: #faf3f8; color: #b07ba6; padding: 2px 6px; border-radius: 2px; font-size: 14px; font-family: "SF Mono", Menlo, monospace; }
+  .step .body ul, .step .body ol { margin: 8px 0; padding-left: 22px; }
+  .step .body li { margin: 4px 0; line-height: 1.7; }
+  .step .body li::marker { color: #b07ba6; }
   .screenshots { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin: 20px 0; }
   .screenshot { border: 1px solid #e8e0e6; border-radius: 2px; overflow: hidden; box-shadow: 0 4px 16px rgba(42,42,42,0.08); }
   .screenshot img { width: 100%; display: block; }

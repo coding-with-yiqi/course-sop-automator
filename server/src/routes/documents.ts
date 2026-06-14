@@ -412,9 +412,9 @@ export function registerDocumentRoutes(app: FastifyInstance): void {
     const userHint = req.body.userHint?.trim();
 
     const detailMap: Record<1 | 2 | 3, string> = {
-      1: '极简,instructionRichText 限 1 句',
-      2: '平衡,instructionRichText 2 句',
-      3: '详细,instructionRichText 3 句,补充「为什么」',
+      1: '极简:instructionRichText 用 1 句祈使句直给操作,不解释、不列表',
+      2: '平衡:instructionRichText 1-2 句;若含 2 个以上并列要点,用 <ul><li>…</li></ul> 分点而非堆成一段',
+      3: '详细:含多个子动作/注意事项时用 <ul><li>…</li></ul> 分点列出,每点一个要点并补一句「为什么」;单一动作时写 2-3 句',
     };
     const toneMap: Record<'technical' | 'beginner', string> = {
       technical: '受众是有经验的工程师,使用专业术语',
@@ -423,7 +423,7 @@ export function registerDocumentRoutes(app: FastifyInstance): void {
 
     const assetBlock = buildAssetBlock(step.assets);
 
-    const system = `你是单步重写助手。基于原步骤的标题/描述/代码,只重写 title/shortDescription/instructionRichText 三项,保持 codeBlock 不变。输出严格 JSON,字段为 { "title": string, "shortDescription": string, "instructionRichText": string }。允许 <code>行内</code> 标签,禁止其他 HTML。`;
+    const system = `你是单步重写助手。基于原步骤的标题/描述/代码,只重写 title/shortDescription/instructionRichText 三项,保持 codeBlock 不变。输出严格 JSON,字段为 { "title": string, "shortDescription": string, "instructionRichText": string }。instructionRichText 允许的标签:<code>行内代码</code>、<ul>/<ol>/<li>、<strong>、<em>、<br>;含多个并列要点时优先用 <ul><li>…</li></ul> 分点,避免堆成一长段;禁止其他 HTML。`;
     const user = `当前步骤 #${stepNumber}:
 原标题: ${step.title}
 原描述: ${step.shortDescription}

@@ -9,7 +9,7 @@ export const SYSTEM_PROMPT = `你是「教学视频 SOP 文档生成助手」。
 3. 实操模式(动手演示时):每个动作对应 1 个步骤,timestampSec 精确到动作发生时的字幕开始时间。
 4. 凡是讲师口述出现的命令行、代码片段、配置块,必须放进 codeBlock,language 由你判断(jsx / python / bash / json / yaml / sql / html / css 等)。
 5. **若用户提供了 PPT 大纲(<slides-context> 标签),把它视为"原稿"——字幕里的代码/命令/术语以 PPT 上的写法为准**(讲师口述常有错读、省略、合成词)。PPT 大纲里出现的代码块也要尽量摘进 codeBlock,即使字幕没念。
-6. 单个步骤的 instructionRichText 不超过 3 句,语言简练,可包含 <code>行内代码</code> 标签。
+6. instructionRichText 语言简练,默认 ≤3 句;**当一步含多个并列动作或注意事项时,优先用 <ul><li>…</li></ul> 分点列出,避免堆成一长段难读的文字**。允许的标签仅:<code>行内代码</code>、<ul>/<ol>/<li>、<strong>、<em>、<br>、<p>;禁止其他 HTML。
 7. timestampSec 必须严格落在传入的字幕时间范围内(单位:秒)。
 8. accentColor 字段从 ['matcha','aqua','lavender','blush'] 里选一个,用于步骤卡的左侧色条。
 9. 输出必须是严格 JSON,符合 schema。任何 markdown、说明、前导/后置文字一律禁止。
@@ -20,7 +20,7 @@ export const SYSTEM_PROMPT = `你是「教学视频 SOP 文档生成助手」。
     {
       "title": "≤40 字步骤标题",
       "shortDescription": "时间线一行预览,≤80 字",
-      "instructionRichText": "≤3 句正文,可含 <code>…</code> 行内代码",
+      "instructionRichText": "正文:≤3 句或 <ul><li>…</li></ul> 分点;可含 <code>…</code> 行内代码",
       "timestampSec": <数字,秒>,
       "codeBlock": {
         "language": "bash" | "jsx" | "python" | ...,
@@ -62,9 +62,11 @@ function granularityHint(mode: 'theory' | 'practice', g?: Granularity): string {
 }
 
 function detailHint(level?: 1 | 2 | 3): string {
-  if (level === 1) return '风格:极简,instructionRichText 限 1 句。';
-  if (level === 3) return '风格:详细,instructionRichText 允许 3 句,解释操作的「为什么」。';
-  return '风格:平衡,instructionRichText 通常 2 句。';
+  if (level === 1)
+    return '风格:极简。instructionRichText 用 1 句祈使句直给操作,不解释、不展开,不要列表。';
+  if (level === 3)
+    return '风格:详细。当本步骤含多个子动作/注意事项时,instructionRichText 用 <ul><li>…</li></ul> 分点列出,每点一个动作或要点,并补一句操作的「为什么」;子动作只有一个时可写 2-3 句正文。';
+  return '风格:平衡。instructionRichText 写 1-2 句;若自然涉及 2 个以上并列要点,用 <ul><li>…</li></ul> 列出而非堆成一段。';
 }
 
 function toneHint(tone?: 'technical' | 'beginner'): string {

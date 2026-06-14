@@ -1,6 +1,7 @@
 import { Client } from '@notionhq/client';
 import type { SOPDocument, SOPStep } from '@sop/shared';
 import { log } from '../util/log.js';
+import { richTextToPlain } from '../util/richtext.js';
 
 interface NotionConfig {
   token: string;
@@ -58,11 +59,11 @@ function stepToBlocks(step: SOPStep): Array<Record<string, unknown>> {
     blocks.push(paragraphBlock(step.shortDescription));
   }
 
-  // Instruction (strip HTML tags for Notion)
+  // Instruction (strip HTML, keep list/paragraph line breaks → one block per line)
   if (step.instructionRichText) {
-    const plain = step.instructionRichText.replace(/<[^>]+>/g, '');
-    if (plain.trim()) {
-      blocks.push(paragraphBlock(plain));
+    const plain = richTextToPlain(step.instructionRichText);
+    for (const line of plain.split('\n')) {
+      if (line.trim()) blocks.push(paragraphBlock(line));
     }
   }
 

@@ -123,7 +123,7 @@ export interface HealthResponse {
 }
 
 export const SANITIZE_OPTIONS = {
-  allowedTags: ['p', 'strong', 'em', 'code', 'a', 'br', 'span'],
+  allowedTags: ['p', 'strong', 'em', 'code', 'a', 'br', 'span', 'ul', 'ol', 'li'],
   allowedAttributes: { a: ['href', 'target', 'rel'] },
   selfClosing: ['br'],
 };
